@@ -389,54 +389,55 @@ def generate_all_visualizations(extractor: PhiManifoldExtractor, prefix: str = "
 # ============================================================================
 # TEST WITH TELEPORTATION CIRCUIT
 # ============================================================================
-
 if __name__ == "__main__":
     print("="*70)
-    print("PHI MANIFOLD VISUALIZATION - TELEPORTATION CIRCUIT")
+    print("PHI MANIFOLD VISUALIZATION - BELL STATE (Φ+)")
     print("="*70)
     
-    # Build teleportation circuit
-    circuit = Circuit(num_qubits=3)
+    # Build Bell state circuit: |Φ+⟩ = (|00⟩ + |11⟩)/√2
+    circuit = Circuit(num_qubits=2)
     
-    # Step 1: Prepare message state
+        # Φ+ = (|00⟩ + |11⟩)/√2
     circuit.add(Gate("H", [0]))
-    
-    # Step 2: Create Bell pair
-    circuit.add(Gate("H", [1]))
-    circuit.add(Gate("CNOT", [1, 2]))
-    
-    # Step 3: Alice's operations
     circuit.add(Gate("CNOT", [0, 1]))
+
+    # Φ- = (|00⟩ - |11⟩)/√2
     circuit.add(Gate("H", [0]))
-    
-    # Step 4: Measurements
-    circuit.add(Gate("M", [0]))
-    circuit.add(Gate("M", [1]))
-    
-    # Step 5: Bob's corrections
-    circuit.add(Gate("X", [2]))
-    circuit.add(Gate("Z", [2]))
+    circuit.add(Gate("CNOT", [0, 1]))
+    circuit.add(Gate("Z", [0]))
+
+    # Ψ+ = (|01⟩ + |10⟩)/√2
+    circuit.add(Gate("H", [0]))
+    circuit.add(Gate("CNOT", [0, 1]))
+    circuit.add(Gate("X", [0]))
+
+    # Ψ- = (|01⟩ - |10⟩)/√2
+    circuit.add(Gate("H", [0]))
+    circuit.add(Gate("CNOT", [0, 1]))
+    circuit.add(Gate("X", [0]))
+    circuit.add(Gate("Z", [0]))
+
     
     print(f"\nCircuit: {circuit}")
     print("\n" + circuit.visualize())
     
     # Create extractor with OPTIMIZED parameters
-    W = torch.randn(6, 3) * 0.1
-    B = torch.tensor([0.001, 0.001, 0.001])
+    W = torch.randn(6, 2) * 0.1  # 2 qubits now!
+    B = torch.tensor([0.001, 0.001])
     
     extractor = PhiManifoldExtractor(
         circuit,
         DecoherenceProjectionMatrix=W,
         BaselinePauliOffset=B,
-        alpha=0.85,
-        beta=0.18,
-        kappa=0.12,
+        alpha=0.92,   # Strong memory
+        beta=0.12,    # Reduced spatial diffusion
+        kappa=0.65,   # HIGH disturbance (gate bursts!)
         epsilon=0.003,
         gamma=1.2,
-        rho=0.1,
-        sigma=0.06,
-        a=1.0,
-        b=2.5
+        rho=0.1,      # Gentle saturation
+        sigma=0.09,
+        a=0.6,        # Gate amplification
+        b=2.0       # Measurement HUGE (if you add measurements)
     )
     
     print(f"\n{extractor}")
@@ -464,9 +465,6 @@ if __name__ == "__main__":
     
     # Generate all visualizations
     print("\n")
-    generate_all_visualizations(extractor, prefix="teleportation")
+    generate_all_visualizations(extractor, prefix="bell_state")
     
-    print("\n🔥 READY TO DEMOLISH THE HACKATHON! 🔥")
-
-
-
+    print("\n🔥 BELL STATE MANIFOLD COMPLETE! 🔥")
