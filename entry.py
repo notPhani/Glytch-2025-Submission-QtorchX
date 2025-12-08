@@ -1147,9 +1147,11 @@ class PhiManifoldExtractor:
         Extract complete phi manifold by simulating coupled dynamics.
         
         Simulates the equation:
-        φ_i(t+1) = (α-λ)φ_i(t) + β[Lφ(t)]_i + κ[LD(t)]_i 
-                   + ε Σ_j exp(-γd_ij)φ_j(t) + ρH(φ_i(t)) 
-                   + σ(G_i(t) + M_i(t))η_i(t)
+        φ_i(t+1) = tanh[(α-λ)φ_i(t) + β[Lφ(t)]_i + κ[LD(t)]_i 
+                        + ε Σ_j exp(-γd_ij)φ_j(t) + ρH(φ_i(t)) 
+                        + σ(G_i(t) + M_i(t))η_i(t)]
+        
+        The tanh ensures phi stays bounded in [-1, 1] range.
         
         Returns:
             PhiManifold: Tensor of shape (6, num_qubits, max_time)
@@ -1185,10 +1187,14 @@ class PhiManifoldExtractor:
             stochastic = self._compute_stochastic_kicks(t)
             self.PhiManifold[5, :, t] = stochastic
             
-            # Update phi for next iteration (sum of all contributions)
-            phi = memory + diffusion + disturbance + nonlocal_term + nonlinear + stochastic
+            # Sum all contributions
+            phi_next_raw = memory + diffusion + disturbance + nonlocal_term + nonlinear + stochastic
+            
+            # Apply tanh soft clamping to keep phi bounded
+            phi = torch.tanh(phi_next_raw)
         
         return self.PhiManifold
+
     
     # ========================================================================
     # UTILITY METHODS
