@@ -719,3 +719,15 @@ class Circuit:
     
     def __repr__(self) -> str:
         return f"Circuit(qubits={self.num_qubits}, gates={self.size}, depth={self.depth})"
+
+class PhiManifoldExtractor:
+    def __init__(self, circuit: Circuit, DecoherenceProjectionMatrix: torch.Tensor, BaselinePauliOffset: torch.Tensor) -> None:
+        self.circuit = circuit
+        self.DecoherenceProjectionMatrix = DecoherenceProjectionMatrix
+        self.BaselinePauliOffset = BaselinePauliOffset
+        self.num_qubits = circuit.num_qubits
+        self.max_time = circuit.depth
+        self.PhiManifold = torch.zeros((6, self.num_qubits, self.max_time), dtype=torch.float32)
+    
+    def _get_laplacian() -> torch.Tensor:
+        pass
