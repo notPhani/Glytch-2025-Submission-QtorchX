@@ -857,24 +857,46 @@ class Circuit:
         return f"Circuit(qubits={self.num_qubits}, gates={self.size}, depth={self.depth})"
 
 class PhiManifoldExtractor:
-    def __init__(self, circuit: Circuit, DecoherenceProjectionMatrix: torch.Tensor, BaselinePauliOffset: torch.Tensor,
-                alpha: float = 0.9,
-                lam: float = 0.05,
-                beta: float = 0.15,
-                kappa: float = 0.1,
-                epsilon: float = 0.002,
-                gamma: float = 1.0,
-                rho: float = 0.08,
-                sigma: float = 0.05,
-                a: float = 1.0,  # Gate disturbance weight
-                b: float = 1.5,  # Measurement disturbance weight
-                device: str = 'cuda' if torch.cuda.is_available() else 'cpu') -> None:
+    """
+    Extracts 6-channel phi manifold from quantum circuit execution.
+    
+    Output shape: (6, num_qubits, max_depth)
+    
+    Channels:
+        [0] Memory: (α-λ)φ_i(t)
+        [1] Spatial Diffusion: β[Lφ(t)]_i
+        [2] Disturbance Diffusion: κ[LD(t)]_i
+        [3] Nonlocal Bleed: ε Σ_j exp(-γd_ij)φ_j(t)
+        [4] Nonlinear Saturation: ρ φ_i(t)/(1+φ_i²(t))
+        [5] Stochastic Kicks: σ_i(t)(G_i(t) + M_i(t))η_i(t)
+    """
+    
+    def __init__(
+        self, 
+        circuit: Circuit, 
+        DecoherenceProjectionMatrix: torch.Tensor, 
+        BaselinePauliOffset: torch.Tensor, 
+        alpha: float = 0.9, 
+        lam: float = 0.05, 
+        beta: float = 0.15, 
+        kappa: float = 0.1, 
+        epsilon: float = 0.002, 
+        gamma: float = 1.0, 
+        rho: float = 0.08, 
+        sigma: float = 0.05, 
+        a: float = 1.0,  # Gate disturbance amplification
+        b: float = 2.0,  # Measurement disturbance amplification (typically 2x gates)
+        device: str = 'cuda' if torch.cuda.is_available() else 'cpu'
+    ) -> None:
         self.circuit = circuit
-        self.DecoherenceProjectionMatrix = DecoherenceProjectionMatrix
-        self.BaselinePauliOffset = BaselinePauliOffset
+        self.DecoherenceProjectionMatrix = DecoherenceProjectionMatrix.to(device)
+        self.BaselinePauliOffset = BaselinePauliOffset.to(device)
+        
         self.num_qubits = circuit.num_qubits
         self.max_time = circuit.depth
-        self.PhiManifold = torch.zeros((6, self.num_qubits, self.max_time), dtype=torch.float32)
+        self.device = device
+        
+        # Hyperparameters
         self.alpha = alpha
         self.lam = lam
         self.beta = beta
@@ -883,60 +905,446 @@ class PhiManifoldExtractor:
         self.gamma = gamma
         self.rho = rho
         self.sigma = sigma
-        self.a = a
-        self.b = b
-
-        self._laplacian = None
-        self._distance_matrix = None
-        self._adjacency = None
+        self.a = a  # Gate burst amplification
+        self.b = b  # Measurement burst amplification
+        
+        # Storage for phi manifold (6, num_qubits, max_time)
+        self.PhiManifold = torch.zeros(
+            (6, self.num_qubits, self.max_time),
+            dtype=torch.float32,
+            device=device
+        )
+        
+        # Precomputed graph structures (lazy initialization)
+        self._laplacian: Optional[torch.Tensor] = None
+        self._distance_matrix: Optional[torch.Tensor] = None
+        self._adjacency: Optional[torch.Tensor] = None
     
-    def _get_laplacian() -> torch.Tensor:
-        pass
+    # ========================================================================
+    # GRAPH STRUCTURE METHODS
+    # ========================================================================
+    
+    def _get_laplacian(self) -> torch.Tensor:
+        """
+        Build graph Laplacian L = D - W from circuit connectivity.
+        Edges exist between qubits connected by multi-qubit gates.
+        
+        Returns:
+            Laplacian matrix (num_qubits, num_qubits)
+        """
+        if self._laplacian is not None:
+            return self._laplacian
+        
+        n = self.num_qubits
+        W = torch.zeros((n, n), device=self.device)
+        
+        # Build adjacency from multi-qubit gates
+        for gate in self.circuit.gates:
+            if len(gate.qubits) >= 2:
+                # Create edges for all pairs in multi-qubit gate
+                for i in range(len(gate.qubits)):
+                    for j in range(i + 1, len(gate.qubits)):
+                        q1, q2 = gate.qubits[i], gate.qubits[j]
+                        W[q1, q2] = 1.0
+                        W[q2, q1] = 1.0
+        
+        # Degree matrix
+        D = torch.diag(W.sum(dim=1))
+        
+        # Laplacian L = D - W
+        self._laplacian = D - W
+        self._adjacency = W
+        
+        return self._laplacian
+    
+    def _get_distance_matrix(self) -> torch.Tensor:
+        """
+        Compute all-pairs shortest path distances using Floyd-Warshall.
+        Distance is measured in number of hops on circuit graph.
+        
+        Returns:
+            Distance matrix (num_qubits, num_qubits)
+        """
+        if self._distance_matrix is not None:
+            return self._distance_matrix
+        
+        n = self.num_qubits
+        
+        # Initialize with infinity (unreachable)
+        dist = torch.full((n, n), float('inf'), device=self.device)
+        
+        # Self-loops (distance 0)
+        for i in range(n):
+            dist[i, i] = 0.0
+        
+        # Add edges from circuit (distance 1 for neighbors)
+        for gate in self.circuit.gates:
+            if len(gate.qubits) >= 2:
+                for i in range(len(gate.qubits)):
+                    for j in range(i + 1, len(gate.qubits)):
+                        q1, q2 = gate.qubits[i], gate.qubits[j]
+                        dist[q1, q2] = 1.0
+                        dist[q2, q1] = 1.0
+        
+        # Floyd-Warshall algorithm
+        for k in range(n):
+            for i in range(n):
+                for j in range(n):
+                    if dist[i, k] + dist[k, j] < dist[i, j]:
+                        dist[i, j] = dist[i, k] + dist[k, j]
+        
+        # Replace unreachable (inf) with large distance
+        dist[dist == float('inf')] = 10.0
+        
+        self._distance_matrix = dist
+        return self._distance_matrix
+    
+    def _get_disturbance_field(self, time_step: int) -> torch.Tensor:
+        """
+        Compute disturbance field D_i(t) = a*G_i(t)*w_gate + b*M_i(t)*w_meas
+        
+        Where w_gate and w_meas are hardware-calibrated burst weights.
+        
+        Args:
+            time_step: Current time step
+            
+        Returns:
+            Disturbance vector (num_qubits,)
+        """
+        D = torch.zeros(self.num_qubits, device=self.device)
+        
+        gates_at_t = self.circuit.get_time_slice(time_step)
+        
+        for gate in gates_at_t:
+            # Get hardware-calibrated burst weight
+            burst = gate.get_burst_weight()
+            
+            for q in gate.qubits:
+                if gate.name.upper() == 'M':
+                    # Measurement: amplified by factor b
+                    D[q] += self.b * burst
+                else:
+                    # Gate: amplified by factor a
+                    D[q] += self.a * burst
+        
+        return D
+    
+    # ========================================================================
+    # FEATURE COMPUTATION METHODS
+    # ========================================================================
+    
+    def _compute_memory_term(self, phi_prev: torch.Tensor) -> torch.Tensor:
+        """
+        Channel [0]: Memory term (α - λ)φ_i(t)
+        
+        Implements non-Markovian persistence with decay.
+        
+        Args:
+            phi_prev: Previous phi state (num_qubits,)
+            
+        Returns:
+            Memory contribution (num_qubits,)
+        """
+        return (self.alpha - self.lam) * phi_prev
+    
+    def _compute_spatial_diffusion(self, phi_prev: torch.Tensor) -> torch.Tensor:
+        """
+        Channel [1]: Spatial diffusion β[Lφ(t)]_i
+        
+        Noise spreads along circuit topology via graph Laplacian.
+        
+        Args:
+            phi_prev: Previous phi state (num_qubits,)
+            
+        Returns:
+            Diffusion contribution (num_qubits,)
+        """
+        L = self._get_laplacian()
+        return self.beta * torch.matmul(L, phi_prev)
+    
+    def _compute_disturbance_diffusion(self, time_step: int) -> torch.Tensor:
+        """
+        Channel [2]: Disturbance diffusion κ[LD(t)]_i
+        
+        Gate/measurement disturbances propagate along circuit graph.
+        
+        Args:
+            time_step: Current time step
+            
+        Returns:
+            Disturbance contribution (num_qubits,)
+        """
+        L = self._get_laplacian()
+        D_t = self._get_disturbance_field(time_step)
+        return self.kappa * torch.matmul(L, D_t)
+    
+    def _compute_nonlocal_bleed(self, phi_prev: torch.Tensor) -> torch.Tensor:
+        """
+        Channel [3]: Nonlocal exponential bleed ε Σ_j exp(-γd_ij)φ_j(t)
+        
+        Long-range coupling with exponential distance decay.
+        Creates smooth gradients in manifold.
+        
+        Args:
+            phi_prev: Previous phi state (num_qubits,)
+            
+        Returns:
+            Nonlocal contribution (num_qubits,)
+        """
+        dist_matrix = self._get_distance_matrix()
+        
+        # Compute exponential decay matrix exp(-γ*d_ij)
+        decay_matrix = torch.exp(-self.gamma * dist_matrix)
+        
+        # Zero out diagonal (no self-interaction)
+        decay_matrix.fill_diagonal_(0.0)
+        
+        # Weighted sum over neighbors
+        return self.epsilon * torch.matmul(decay_matrix, phi_prev)
+    
+    def _compute_nonlinear_saturation(self, phi_prev: torch.Tensor) -> torch.Tensor:
+        """
+        Channel [4]: Nonlinear saturation ρ φ_i(t)/(1 + φ_i²(t))
+        
+        Prevents runaway growth via soft saturation function.
+        
+        Args:
+            phi_prev: Previous phi state (num_qubits,)
+            
+        Returns:
+            Nonlinear contribution (num_qubits,)
+        """
+        return self.rho * phi_prev / (1.0 + phi_prev**2)
+    
+    def _compute_stochastic_kicks(self, time_step: int) -> torch.Tensor:
+        """
+        Channel [5]: Stochastic kicks σ(G_i(t) + M_i(t))η_i(t)
+        
+        Activity-modulated Gaussian noise. Idle qubits have minimal noise,
+        active qubits (gates/measurements) have proportional noise.
+        
+        Args:
+            time_step: Current time step
+            
+        Returns:
+            Stochastic contribution (num_qubits,)
+        """
+        # Get disturbance field (activity indicator)
+        D_t = self._get_disturbance_field(time_step)
+        
+        # Gaussian white noise
+        eta = torch.randn(self.num_qubits, device=self.device)
+        
+        # Activity-modulated noise
+        return self.sigma * D_t * eta
+    
+    # ========================================================================
+    # MAIN EXTRACTION METHOD
+    # ========================================================================
+    
+    def GetManifold(self) -> torch.Tensor:
+        """
+        Extract complete phi manifold by simulating coupled dynamics.
+        
+        Simulates the equation:
+        φ_i(t+1) = (α-λ)φ_i(t) + β[Lφ(t)]_i + κ[LD(t)]_i 
+                   + ε Σ_j exp(-γd_ij)φ_j(t) + ρH(φ_i(t)) 
+                   + σ(G_i(t) + M_i(t))η_i(t)
+        
+        Returns:
+            PhiManifold: Tensor of shape (6, num_qubits, max_time)
+        """
+        # Initialize phi(0) with small random noise
+        phi = torch.randn(self.num_qubits, device=self.device) * 0.01
+        
+        # Time evolution loop
+        for t in range(self.max_time):
+            # Compute all 6 feature channels independently
+            
+            # [0] Memory
+            memory = self._compute_memory_term(phi)
+            self.PhiManifold[0, :, t] = memory
+            
+            # [1] Spatial diffusion
+            diffusion = self._compute_spatial_diffusion(phi)
+            self.PhiManifold[1, :, t] = diffusion
+            
+            # [2] Disturbance diffusion
+            disturbance = self._compute_disturbance_diffusion(t)
+            self.PhiManifold[2, :, t] = disturbance
+            
+            # [3] Nonlocal bleed
+            nonlocal_term = self._compute_nonlocal_bleed(phi)
+            self.PhiManifold[3, :, t] = nonlocal_term
+            
+            # [4] Nonlinear saturation
+            nonlinear = self._compute_nonlinear_saturation(phi)
+            self.PhiManifold[4, :, t] = nonlinear
+            
+            # [5] Stochastic kicks
+            stochastic = self._compute_stochastic_kicks(t)
+            self.PhiManifold[5, :, t] = stochastic
+            
+            # Update phi for next iteration (sum of all contributions)
+            phi = memory + diffusion + disturbance + nonlocal_term + nonlinear + stochastic
+        
+        return self.PhiManifold
+    
+    # ========================================================================
+    # UTILITY METHODS
+    # ========================================================================
+    
+    def get_composite_manifold(self) -> torch.Tensor:
+        """
+        Get composite manifold (sum over all 6 feature channels).
+        
+        Returns:
+            Composite: (num_qubits, max_time)
+        """
+        return self.PhiManifold.sum(dim=0)
+    
+    def get_feature_channel(self, channel_idx: int) -> torch.Tensor:
+        """
+        Get specific feature channel.
+        
+        Args:
+            channel_idx: Index 0-5
+            
+        Returns:
+            Feature: (num_qubits, max_time)
+        """
+        if not 0 <= channel_idx < 6:
+            raise ValueError(f"channel_idx must be 0-5, got {channel_idx}")
+        
+        return self.PhiManifold[channel_idx]
+    
+    def get_stats(self) -> Dict[str, float]:
+        """Get summary statistics of composite manifold"""
+        composite = self.get_composite_manifold()
+        
+        return {
+            'max': composite.max().item(),
+            'min': composite.min().item(),
+            'mean': composite.mean().item(),
+            'std': composite.std().item(),
+            'total_activity': torch.abs(composite).sum().item(),
+            'peak_time': composite.abs().sum(dim=0).argmax().item(),
+            'peak_qubit': composite.abs().sum(dim=1).argmax().item()
+        }
+    
+    def get_feature_importance(self) -> Dict[str, float]:
+        """
+        Compute contribution of each feature to total activity.
+        
+        Returns:
+            Dict mapping feature index to percentage contribution
+        """
+        # Total absolute contribution per feature
+        feature_totals = torch.abs(self.PhiManifold).sum(dim=(1, 2))
+        
+        # Normalize to percentages
+        total = feature_totals.sum()
+        if total == 0:
+            return {f"feature_{i}": 0.0 for i in range(6)}
+        
+        percentages = (feature_totals / total * 100).cpu().numpy()
+        
+        feature_names = [
+            'Memory',
+            'Spatial Diffusion',
+            'Disturbance',
+            'Nonlocal Bleed',
+            'Nonlinear Saturation',
+            'Stochastic Kicks'
+        ]
+        
+        return {name: float(pct) for name, pct in zip(feature_names, percentages)}
+    
+    def __repr__(self) -> str:
+        return (
+            f"PhiManifoldExtractor(\n"
+            f"  shape=(6, {self.num_qubits}, {self.max_time})\n"
+            f"  α={self.alpha:.3f}, λ={self.lam:.3f}\n"
+            f"  β={self.beta:.3f}, κ={self.kappa:.3f}\n"
+            f"  ε={self.epsilon:.4f}, γ={self.gamma:.3f}\n"
+            f"  ρ={self.rho:.3f}, σ={self.sigma:.3f}\n"
+            f"  a={self.a:.2f}, b={self.b:.2f}\n"
+            f"  device={self.device}\n"
+            f")"
+        )
+
+
+# ============================================================================
+# QUICK TEST
+# ============================================================================
 
 if __name__ == "__main__":
     print("="*70)
-    print("GATE LIBRARY WITH REALISTIC BURST WEIGHTS (2025 Hardware Data)")
+    print("PHI MANIFOLD EXTRACTION - COMPLETE TEST")
     print("="*70)
     
-    # Show all gates with burst weights
-    gates_info = GateLibrary.list_gates_with_burst()
+    # Create simple test circuit
+    circuit = Circuit(num_qubits=3)
+    circuit.add(Gate("H", [0]))
+    circuit.add(Gate("H", [1]))
+    circuit.add(Gate("CNOT", [0, 1]))
+    circuit.add(Gate("RY", [2], params=[np.pi/4]))
+    circuit.add(Gate("CNOT", [1, 2]))
     
+    print(f"\nCircuit: {circuit}")
+    print(circuit.visualize())
+    
+    # Create dummy W and B
+    W = torch.randn(6, 3) * 0.1
+    B = torch.tensor([0.001, 0.001, 0.001])
+    
+    # Create extractor
+    extractor = PhiManifoldExtractor(
+        circuit,
+        DecoherenceProjectionMatrix=W,
+        BaselinePauliOffset=B,
+        alpha=0.92,
+        beta=0.18,
+        kappa=0.12,
+        a=1.0,
+        b=2.0
+    )
+    
+    print(f"\n{extractor}")
+    
+    # Extract manifold
+    print("\nExtracting manifold...")
+    manifold = extractor.GetManifold()
+    
+    print(f"✓ Manifold shape: {manifold.shape}")
+    print(f"✓ Memory allocated: {manifold.element_size() * manifold.nelement() / 1024:.2f} KB")
+    
+    # Stats
     print("\n" + "="*70)
-    print("SINGLE-QUBIT GATES (Low Error)")
+    print("COMPOSITE STATISTICS")
     print("="*70)
-    single_q = {k: v for k, v in gates_info.items() if v['num_qubits'] == 1}
-    for name, info in sorted(single_q.items(), key=lambda x: x[1]['burst_weight']):
-        print(f"{name:12s}  burst={info['burst_weight']:4.2f}  ({info['error_class']})")
+    stats = extractor.get_stats()
+    for key, val in stats.items():
+        print(f"  {key:20s}: {val:10.6f}")
     
+    # Feature importance
     print("\n" + "="*70)
-    print("TWO-QUBIT GATES (High Error)")
+    print("FEATURE IMPORTANCE")
     print("="*70)
-    two_q = {k: v for k, v in gates_info.items() if v['num_qubits'] == 2}
-    for name, info in sorted(two_q.items(), key=lambda x: x[1]['burst_weight']):
-        print(f"{name:12s}  burst={info['burst_weight']:4.2f}  ({info['error_class']})")
+    importance = extractor.get_feature_importance()
+    for name, pct in importance.items():
+        print(f"  {name:25s}: {pct:6.2f}%")
     
+    # Check individual channels
     print("\n" + "="*70)
-    print("THREE-QUBIT GATES (Extreme Error)")
+    print("CHANNEL STATISTICS")
     print("="*70)
-    three_q = {k: v for k, v in gates_info.items() if v['num_qubits'] == 3}
-    for name, info in sorted(three_q.items(), key=lambda x: x[1]['burst_weight']):
-        print(f"{name:12s}  burst={info['burst_weight']:4.2f}  ({info['error_class']})")
+    for i in range(6):
+        channel = extractor.get_feature_channel(i)
+        print(f"  [{i}] mean={channel.mean().item():8.4f}, "
+              f"std={channel.std().item():8.4f}, "
+              f"max={channel.abs().max().item():8.4f}")
     
-    # Test Gate creation with auto-populated metadata
-    print("\n" + "="*70)
-    print("GATE CREATION WITH AUTO-METADATA")
-    print("="*70)
-    
-    g1 = Gate("H", [0])
-    g2 = Gate("CNOT", [0, 1])
-    g3 = Gate("TOFFOLI", [0, 1, 2])
-    g4 = Gate("RY", [0], params=[np.pi/4], metadata={'burst_weight': 1.5})  # Override
-    
-    print(f"H gate:       burst={g1.get_burst_weight():.2f} (auto)")
-    print(f"CNOT gate:    burst={g2.get_burst_weight():.2f} (auto)")
-    print(f"TOFFOLI gate: burst={g3.get_burst_weight():.2f} (auto)")
-    print(f"RY gate:      burst={g4.get_burst_weight():.2f} (manual override)")
-    
-    print("\n✓ Burst weights auto-populated from hardware data!")
-    print("✓ User can still override via metadata!")
-    print("✓ Ready for phi manifold extraction!")
+    print("\n✓ Manifold extraction complete!")
+    print("✓ Ready for visualization and Pauli projection!")
+    print("\n🔥 HACKATHON-READY! LET'S FREAKING GO! 🔥")
