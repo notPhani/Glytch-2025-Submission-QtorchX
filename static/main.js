@@ -431,7 +431,8 @@ canvas.addEventListener('click', e => {
   if (t === N_STEPS - 1) return;
   const g = circuit[q][t];
   if (!g) return;
-  placeGate(g.name, g.qubits[0], g.t);
+  placeGate(g.name, q, g.t);
+
   drawCircuit();
 });
 
