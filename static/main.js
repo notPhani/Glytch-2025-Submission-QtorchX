@@ -248,16 +248,16 @@ function placeGate(name, q, t) {
   return true;
 }
 
-// ---------- Drawing ----------
 function drawCircuit() {
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#10131b';
   ctx.fillRect(0, 0, W, H);
+  
   ctx.font = '12px monospace';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
 
-  // horizontal lines + labels
+  // 1. Draw grid lines + labels
   for (let r = 0; r < rows; r++) {
     const y = (r + 0.5) * cellH;
     ctx.strokeStyle = '#333';
@@ -270,7 +270,6 @@ function drawCircuit() {
     else ctx.fillText(`c[${r}]`, 4, y);
   }
 
-  // vertical grid
   ctx.strokeStyle = '#222';
   for (let t = 0; t < N_STEPS; t++) {
     const x = t * cellW;
@@ -280,7 +279,10 @@ function drawCircuit() {
     ctx.stroke();
   }
 
-  // user gates
+  // 2. *** PHI MANIFOLD HEATMAP (LAYER 1) ***
+  drawPhiManifoldSmooth();
+
+  // 3. Draw user gates (LAYER 2 - on top of heatmap)
   const drawn = new Set();
   for (let q = 0; q < N_QUBITS; q++) {
     for (let t = 0; t < N_STEPS; t++) {
@@ -294,12 +296,13 @@ function drawCircuit() {
     }
   }
 
-  // fixed M column
+  // 4. Fixed M column
   drawMeasurements();
 
-  // ghost
+  // 5. Ghost gate (dragging)
   if (dragging && dragGate) drawDraggingGate();
 }
+
 
 function drawGateGlyph(gate) {
   const { name, qubits, t } = gate;
@@ -599,6 +602,176 @@ function syncHistogramCanvas() {
 
   drawHistogram();
 }
+// ========================================================================
+// PHI MANIFOLD HEATMAP - Smooth Bilinear Interpolation
+// ========================================================================
+
+function drawPhiManifoldSmooth() {
+  if (!window.lastPhiManifold || !document.getElementById('inspectToggle').checked) {
+    return; // Only draw if phi data exists and inspect is enabled
+  }
+
+  const phiData = window.lastPhiManifold;
+  
+  // ---------- Normalize phi values ----------
+  let minPhi = Infinity, maxPhi = -Infinity;
+  for (const qubitData of phiData) {
+    for (const val of qubitData) {
+      minPhi = Math.min(minPhi, val);
+      maxPhi = Math.max(maxPhi, val);
+    }
+  }
+  
+  const range = maxPhi - minPhi;
+  if (range === 0) return; // No variation
+
+  // ---------- Interpolation Helpers ----------
+  function getPhi(q, t) {
+    // Clamp to valid indices
+    q = Math.max(0, Math.min(N_QUBITS - 1, Math.floor(q)));
+    t = Math.max(0, Math.min(phiData[0].length - 1, Math.floor(t)));
+    return phiData[q][t];
+  }
+
+  function bilinearInterp(qCont, tCont) {
+    // qCont and tCont are continuous coordinates (can be fractional)
+    const q0 = Math.floor(qCont);
+    const q1 = Math.min(q0 + 1, N_QUBITS - 1);
+    const t0 = Math.floor(tCont);
+    const t1 = Math.min(t0 + 1, phiData[0].length - 1);
+    
+    const fq = qCont - q0; // fractional part (0 to 1)
+    const ft = tCont - t0;
+    
+    // Get 4 corner values
+    const v00 = getPhi(q0, t0);
+    const v10 = getPhi(q1, t0);
+    const v01 = getPhi(q0, t1);
+    const v11 = getPhi(q1, t1);
+    
+    // Bilinear interpolation formula
+    const v0 = v00 * (1 - ft) + v01 * ft;
+    const v1 = v10 * (1 - ft) + v11 * ft;
+    const v = v0 * (1 - fq) + v1 * fq;
+    
+    return v;
+  }
+
+  // ---------- Draw Smooth Heatmap ----------
+  const subsamples = 8; // Samples per cell edge for smooth gradients
+  
+  for (let q = 0; q < N_QUBITS; q++) {
+    for (let t = 0; t < N_STEPS; t++) {
+      const x = t * cellW;
+      const y = q * cellH;
+      const w = cellW - 4; // Padding
+      const h = cellH - 4;
+      
+      // Create ImageData for this cell at high resolution
+      const cellCanvas = document.createElement('canvas');
+      cellCanvas.width = subsamples;
+      cellCanvas.height = subsamples;
+      const cellCtx = cellCanvas.getContext('2d');
+      const imageData = cellCtx.createImageData(subsamples, subsamples);
+      
+      // Sample phi at each sub-pixel
+      for (let py = 0; py < subsamples; py++) {
+        for (let px = 0; px < subsamples; px++) {
+          // Map pixel to continuous coordinates
+          const qSample = q + (py / subsamples);
+          const tSample = t + (px / subsamples);
+          
+          // Interpolate phi value
+          const phi = bilinearInterp(qSample, tSample);
+          const normalized = (phi - minPhi) / range;
+          
+          // Get RGBA color
+          const rgba = getPhiColorRGBA(normalized);
+          
+          // Set pixel
+          const idx = (py * subsamples + px) * 4;
+          imageData.data[idx + 0] = rgba.r;
+          imageData.data[idx + 1] = rgba.g;
+          imageData.data[idx + 2] = rgba.b;
+          imageData.data[idx + 3] = rgba.a;
+        }
+      }
+      
+      // Put ImageData to offscreen canvas
+      cellCtx.putImageData(imageData, 0, 0);
+      
+      // Draw smoothed cell to main canvas
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(cellCanvas, x + 2, y + 2, w, h);
+    }
+  }
+}
+
+// Color gradient: Blue → Purple → Red (returns RGBA object)
+function getPhiColorRGBA(normalized) {
+  normalized = Math.max(0, Math.min(1, normalized));
+  
+  let r, g, b, a;
+  
+  if (normalized < 0.5) {
+    // Blue to Purple (0.0 → 0.5)
+    const t = normalized * 2;
+    r = Math.floor(52 + t * (148 - 52));    // #3498db to #940085
+    g = Math.floor(152 - t * 152);
+    b = Math.floor(219 + t * (133 - 219));
+    a = Math.floor((0.3 + t * 0.2) * 255);  // 30% to 50% opacity
+  } else {
+    // Purple to Red (0.5 → 1.0)
+    const t = (normalized - 0.5) * 2;
+    r = Math.floor(148 + t * (231 - 148));  // #940085 to #e74c3c
+    g = 0;
+    b = Math.floor(133 - t * 133);
+    a = Math.floor((0.5 + t * 0.3) * 255);  // 50% to 80% opacity
+  }
+  
+  return { r, g, b, a };
+}
+
+// Original string version for legend
+function getPhiColor(normalized) {
+  const rgba = getPhiColorRGBA(normalized);
+  return `rgba(${rgba.r}, ${rgba.g}, ${rgba.b}, ${rgba.a / 255})`;
+}
+
+// ---------- Phi Legend ----------
+function drawPhiLegend() {
+  if (!window.lastPhiManifold || !document.getElementById('inspectToggle').checked) {
+    return;
+  }
+
+  const legendX = W - 120;
+  const legendY = 10;
+  const legendWidth = 100;
+  const legendHeight = 15;
+
+  // Draw gradient bar
+  const gradient = ctx.createLinearGradient(legendX, 0, legendX + legendWidth, 0);
+  gradient.addColorStop(0, 'rgba(52, 152, 219, 0.4)');   // Blue
+  gradient.addColorStop(0.5, 'rgba(148, 0, 133, 0.6)');  // Purple
+  gradient.addColorStop(1, 'rgba(231, 76, 60, 0.8)');    // Red
+
+  ctx.fillStyle = gradient;
+  ctx.fillRect(legendX, legendY, legendWidth, legendHeight);
+
+  // Border
+  ctx.strokeStyle = '#9ba0b5';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(legendX, legendY, legendWidth, legendHeight);
+
+  // Labels
+  ctx.fillStyle = '#e0e3ff';
+  ctx.font = '9px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('Low', legendX + 15, legendY + legendHeight + 10);
+  ctx.fillText('Phi Intensity', legendX + legendWidth / 2, legendY + legendHeight + 10);
+  ctx.fillText('High', legendX + legendWidth - 15, legendY + legendHeight + 10);
+}
 
 // Initialize histogram canvas
 window.addEventListener('load', () => {
@@ -659,7 +832,6 @@ document.getElementById('runBtn').addEventListener('click', async () => {
     };
     drawHistogram();
 
-    // --- UPDATE BLOCH SPHERES ---
     // --- UPDATE BLOCH SPHERES ---
     if (typeof updateBlochSpheres !== 'undefined' && blochInitialized) {
     const blochStates = result.bloch_states.map(state => ({
