@@ -1788,7 +1788,7 @@ class QtorchBackend:
 
 
     def _apply_classical_pauli(
-        self, 
+        self,  
         target_q: int, 
         pauli: str, 
         depends_on: List[Gate]
@@ -1846,9 +1846,7 @@ class QtorchBackend:
         
         if hasattr(self, 'measurement_results'):
             self.measurement_results.clear()
-
-    def measure_qubit(self,qubit_index:int):
-        pass  
+            
     def reset(self):
         pass
     def get_bloch_sphere(self, qubit_index:int):
