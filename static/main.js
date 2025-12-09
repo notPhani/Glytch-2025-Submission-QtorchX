@@ -1,3 +1,4 @@
+
 // ---- CONFIG ----
 const N_QUBITS = 4;
 const HAS_CLASSICAL = true;
@@ -32,6 +33,7 @@ syncGeometry();
 window.addEventListener('resize', () => {
   syncGeometry();
   drawCircuit();
+  syncHistogramCanvas();
 });
 
 // Drag state
@@ -431,41 +433,327 @@ canvas.addEventListener('click', e => {
   if (t === N_STEPS - 1) return;
   const g = circuit[q][t];
   if (!g) return;
-  placeGate(g.name, q, g.t);
 
+  // FIX: Use the clicked qubit position 'q' instead of g.qubits[0]
+  // This ensures CNOT gates delete correctly no matter which part is clicked
+  placeGate(g.name, q, g.t);
   drawCircuit();
 });
 
+// ---------- Histogram Drawing ----------
+let histogramData = null; // Will store { ideal: {...}, noisy: {...} }
+
+function drawHistogram() {
+  const histCanvas = document.getElementById('histCanvas');
+  if (!histCanvas) return;
+
+  const ctx = histCanvas.getContext('2d');
+  const w = histCanvas.width;
+  const h = histCanvas.height;
+
+  // Clear canvas
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = '#10131b';
+  ctx.fillRect(0, 0, w, h);
+
+  // Define margins and plotting area
+  const margin = { left: 60, right: 20, top: 40, bottom: 60 };
+  const plotWidth = w - margin.left - margin.right;
+  const plotHeight = h - margin.top - margin.bottom;
+
+  // Generate state labels for N_QUBITS
+  const numStates = Math.pow(2, N_QUBITS);
+  const stateLabels = [];
+  for (let i = 0; i < numStates; i++) {
+    stateLabels.push('|' + i.toString(2).padStart(N_QUBITS, '0') + '⟩');
+  }
+
+  // Draw axes
+  ctx.strokeStyle = '#9ba0b5';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(margin.left, margin.top);
+  ctx.lineTo(margin.left, margin.top + plotHeight);
+  ctx.lineTo(margin.left + plotWidth, margin.top + plotHeight);
+  ctx.stroke();
+
+  // Y-axis labels (0 to 1)
+  ctx.fillStyle = '#9ba0b5';
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+
+  for (let i = 0; i <= 5; i++) {
+    const prob = i / 5;
+    const y = margin.top + plotHeight - (prob * plotHeight);
+    ctx.fillText(prob.toFixed(1), margin.left - 10, y);
+
+    // Grid lines
+    ctx.strokeStyle = '#2b2f3a';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(margin.left, y);
+    ctx.lineTo(margin.left + plotWidth, y);
+    ctx.stroke();
+  }
+
+  // Y-axis label
+  ctx.save();
+  ctx.translate(15, margin.top + plotHeight / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#e0e3ff';
+  ctx.font = '12px monospace';
+  ctx.fillText('Probability', 0, 0);
+  ctx.restore();
+
+  // X-axis labels (states)
+  ctx.fillStyle = '#9ba0b5';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+
+  const barWidth = plotWidth / numStates;
+  for (let i = 0; i < numStates; i++) {
+    const x = margin.left + (i + 0.5) * barWidth;
+    const y = margin.top + plotHeight + 5;
+    ctx.fillText(stateLabels[i], x, y);
+  }
+
+  // X-axis label
+  ctx.fillStyle = '#e0e3ff';
+  ctx.font = '12px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('Quantum States', margin.left + plotWidth / 2, h - 10);
+
+  // Legend
+  const legendX = margin.left + 10;
+  const legendY = margin.top + 10;
+
+  // Ideal (Blue)
+  ctx.fillStyle = '#3498db';
+  ctx.fillRect(legendX, legendY, 15, 10);
+  ctx.fillStyle = '#e0e3ff';
+  ctx.font = '11px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Ideal', legendX + 20, legendY + 9);
+
+  // Noisy (Orange)
+  ctx.fillStyle = '#e67e22';
+  ctx.fillRect(legendX + 80, legendY, 15, 10);
+  ctx.fillStyle = '#e0e3ff';
+  ctx.fillText('Noisy', legendX + 100, legendY + 9);
+
+  // Draw bars if data exists
+  if (histogramData) {
+    const { ideal, noisy } = histogramData;
+    const barPadding = 2;
+    const barGroupWidth = barWidth - barPadding;
+    const singleBarWidth = barGroupWidth / 2 - 1;
+
+    for (let i = 0; i < numStates; i++) {
+      const state = i.toString(2).padStart(N_QUBITS, '0');
+      const idealProb = ideal[state] || 0;
+      const noisyProb = noisy[state] || 0;
+
+      const baseX = margin.left + i * barWidth;
+
+      // Ideal bar (blue)
+      if (idealProb > 0) {
+        const barHeight = idealProb * plotHeight;
+        ctx.fillStyle = '#3498db';
+        ctx.fillRect(
+          baseX + barPadding,
+          margin.top + plotHeight - barHeight,
+          singleBarWidth,
+          barHeight
+        );
+      }
+
+      // Noisy bar (orange)
+      if (noisyProb > 0) {
+        const barHeight = noisyProb * plotHeight;
+        ctx.fillStyle = '#e67e22';
+        ctx.fillRect(
+          baseX + singleBarWidth + barPadding + 1,
+          margin.top + plotHeight - barHeight,
+          singleBarWidth,
+          barHeight
+        );
+      }
+    }
+  }
+}
+
+// Sync histogram canvas geometry
+function syncHistogramCanvas() {
+  const histCanvas = document.getElementById('histCanvas');
+  if (!histCanvas) return;
+
+  const container = document.getElementById('bottom-left');
+  if (!container) return;
+
+  const rect = container.getBoundingClientRect();
+  histCanvas.width = rect.width - 16; // Account for padding
+  histCanvas.height = rect.height - 40; // Account for title and padding
+
+  drawHistogram();
+}
+
+// Initialize histogram canvas
+window.addEventListener('load', () => {
+  syncHistogramCanvas();
+});
 // ---------- Run circuit: include Ms logically ----------
 document.getElementById('runBtn').addEventListener('click', async () => {
-  const noise = document.getElementById('noiseToggle').checked;
+  const noise      = document.getElementById('noiseToggle').checked;
+  const inspect     = document.getElementById('inspectToggle').checked;
   const persistent = document.getElementById('persistToggle').checked;
+  const shots      = 1024;
 
+  // Sort gates: by time, then by first qubit
   const payloadGates = gateList
     .slice()
     .sort((a, b) => a.t - b.t || a.qubits[0] - b.qubits[0]);
 
+  // Append measurements at final time step
   const measT = N_STEPS - 1;
   for (let q = 0; q < N_QUBITS; q++) {
-    payloadGates.push({ name: 'M', qubits: [q], t: measT });
+    payloadGates.push({
+      name:  'M',
+      qubits: [q],
+      t:     measT
+    });
   }
 
   const body = {
     num_qubits: N_QUBITS,
-    gates: payloadGates,
-    noise,
-    persistent,
-    shots: 1024
+    shots,
+    noise_enabled: noise,
+    persistent_mode: persistent,
+    show_phi: inspect,
+    gates: payloadGates
   };
 
-  const metaBox = document.getElementById('metaBox');
-  if (metaBox) {
-    metaBox.value = '# Circuit payload\n' + JSON.stringify(body, null, 2);
-  }
+  console.log('📤 Sending to backend:', body);
 
-  // TODO: call backend /simulate here
-  drawCircuit();
+  // --- BACKEND CALL ---
+  try {
+    const response = await fetch('http://localhost:8000/simulate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    console.log('✅ Backend response:', result);
+
+    // --- UPDATE HISTOGRAM ---
+    histogramData = {
+      ideal: result.histogram_ideal,
+      noisy: result.histogram_noisy || {}
+    };
+    drawHistogram();
+
+    // --- UPDATE BLOCH SPHERES ---
+    // --- UPDATE BLOCH SPHERES ---
+    if (typeof updateBlochSpheres !== 'undefined' && blochInitialized) {
+    const blochStates = result.bloch_states.map(state => ({
+        theta: state.theta,
+        phi: state.phi,
+        probability: state.probability,
+        label: state.state  // "0000", "1000"
+    }));
+    updateBlochSpheres(blochStates);
+    
+    // Update legend to show which states are displayed
+    if (typeof updateLegend !== 'undefined') {
+        updateLegend();
+    }
+    }
+
+
+    // --- UPDATE METADATA BOX ---
+    const metaBox = document.getElementById('metaBox');
+if (metaBox) {
+  const meta = result.metadata;
+  const timing = meta.timing;
+  const cache = meta.cache_stats || {};  // ← Safe default
+  const lru = cache.lru_cache || { hits: 0, misses: 0, hit_rate: 0, current_size: 0, max_size: 0 };
+  
+  metaBox.value = `
+
+CIRCUIT INFO
+├─ Qubits:        ${N_QUBITS}
+├─ Circuit Depth: ${meta.circuit_depth}
+├─ Total Gates:   ${meta.circuit_size}
+└─ Shots:         ${meta.shots}
+
+TIMING (seconds)
+├─ Total:         ${timing.total_seconds.toFixed(4)}s
+├─ Circuit Build: ${timing.circuit_build_seconds.toFixed(4)}s
+├─ Ideal Sim:     ${timing.ideal_simulation_seconds.toFixed(4)}s
+├─ Noisy Sim:     ${timing.noisy_simulation_seconds.toFixed(4)}s
+└─ Phi Extraction: ${timing.phi_extraction_seconds.toFixed(4)}s
+
+BACKEND
+├─ Device:        ${meta.device.toUpperCase()}
+├─ Noise:         ${meta.noise_enabled ? 'ENABLED' : 'DISABLED'}
+└─ Persistent:    ${meta.persistent_mode ? 'ON' : 'OFF'}
+
+CACHE STATS
+├─ Fixed Gates:   ${cache.fixed_cache_size || 0}
+├─ LRU Hits:      ${lru.hits}
+├─ LRU Misses:    ${lru.misses}
+├─ Hit Rate:      ${(lru.hit_rate * 100).toFixed(1)}%
+└─ Cache Size:    ${lru.current_size}/${lru.max_size}
+
+RESULTS
+├─ Statevector:   ${result.statevector.length} amplitudes
+├─ Bloch States:  ${result.bloch_states.length} significant
+└─ Phi Manifold:  ${result.phi_manifold ? `${result.phi_manifold.length} × ${result.phi_manifold[0].length}` : 'N/A'}
+
+${noise ? `
+NOISE ANALYSIS
+Ideal vs Noisy Fidelity: ${calculateFidelity(histogramData.ideal, histogramData.noisy).toFixed(3)}
+` : ''}
+`.trim();
+}
+
+
+    // --- STORE PHI MANIFOLD (handle later) ---
+    window.lastPhiManifold = result.phi_manifold;
+    
+    // Redraw circuit with updated state
+    drawCircuit();
+
+    console.log('✨ UI updated successfully');
+
+  } catch (error) {
+    console.error('❌ Simulation failed:', error);
+    alert(`Simulation Error: ${error.message}\n\nCheck console for details.`);
+    
+    const metaBox = document.getElementById('metaBox');
+    if (metaBox) {
+      metaBox.value = `ERROR: ${error.message}\n\nMake sure backend is running:\nuvicorn api:app --reload`;
+    }
+  }
 });
+
+// --- HELPER: Calculate Fidelity ---
+function calculateFidelity(ideal, noisy) {
+  let fidelity = 0;
+  for (const state in ideal) {
+    const p_ideal = ideal[state] || 0;
+    const p_noisy = noisy[state] || 0;
+    fidelity += Math.sqrt(p_ideal * p_noisy);
+  }
+  return fidelity;
+}
 
 // ---------- Init ----------
 drawCircuit();

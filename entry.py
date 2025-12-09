@@ -2188,7 +2188,62 @@ class QtorchBackend:
             'y': float(y_exp),
             'z': float(z_exp)
         }
-    
+    def get_significant_states(self, threshold: float = 0.01) -> List[Dict[str, Any]]:
+        """
+        Extract significant computational basis states from statevector.
+        Returns Bloch sphere coordinates for states with |amplitude|² > threshold.
+        
+        Args:
+            threshold: Minimum probability to include state
+            
+        Returns:
+            List of dicts with: {state_label, probability, theta, phi, x, y, z}
+        """
+        statevector = self.statevector.cpu()
+        probs = torch.abs(statevector) ** 2
+        
+        significant_states = []
+        
+        for idx in range(len(statevector)):
+            prob = probs[idx].item()
+            
+            if prob > threshold:
+                # Convert index to binary string (e.g., 8 -> "1000" for 4 qubits)
+                state_label = format(idx, f'0{self.num_qubits}b')
+                
+                # Get complex amplitude
+                amp = statevector[idx]
+                re = float(torch.real(amp))
+                im = float(torch.imag(amp))
+                
+                # Convert to Bloch sphere coordinates
+                # For basis states, we use the phase of the amplitude
+                r = float(torch.abs(amp))
+                
+                # Theta from |0⟩ (north) to |1⟩ (south)
+                # For superposition states, use amplitude magnitude
+                theta = 2 * np.arccos(r)  # 0 for |0⟩, π for |1⟩
+                
+                # Phi from phase of amplitude
+                phi = float(torch.angle(amp))
+                
+                # Cartesian coordinates
+                x = r * np.sin(theta) * np.cos(phi)
+                y = r * np.sin(theta) * np.sin(phi)
+                z = r * np.cos(theta)
+                
+                significant_states.append({
+                    'state': state_label,
+                    'probability': prob,
+                    'theta': theta,
+                    'phi': phi,
+                    'x': x,
+                    'y': y,
+                    'z': z
+                })
+        
+        return significant_states
+
     def get_all_bloch_sphere(self) -> List[Dict[str, float]]:
         """
         Get Bloch sphere coordinates for all qubits.
@@ -2256,4 +2311,250 @@ class QtorchBackend:
         
         return histogram
 
+# api.py (or append to entry.py)
 
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List, Dict, Optional
+import time
+import torch
+
+# ============================================================================
+# PYDANTIC MODELS
+# ============================================================================
+
+class GateInput(BaseModel):
+    name: str
+    qubits: List[int]
+    t: int
+
+class SimRequest(BaseModel):
+    num_qubits: int
+    shots: int = 1024
+    noise_enabled: bool = False
+    persistent_mode: bool = True
+    show_phi: bool = True
+    gates: List[GateInput]
+
+class BlochState(BaseModel):
+    state: str           # e.g., "0000", "1000"
+    probability: float   # |amplitude|²
+    x: float
+    y: float
+    z: float
+    theta: float
+    phi: float
+
+class SimResponse(BaseModel):
+    statevector: List[str]
+    histogram_ideal: Dict[str, float]
+    histogram_noisy: Optional[Dict[str, float]] = None
+    bloch_states: List[BlochState]  # ← Changed from bloch_spheres
+    phi_manifold: Optional[List[List[float]]] = None
+    metadata: Dict
+
+
+# ============================================================================
+# FASTAPI APP + CORS
+# ============================================================================
+
+app = FastAPI(title="QtorchX Quantum Simulator API", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Change to specific origins in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/")
+async def root():
+    return {"status": "ok", "message": "QtorchX API is running"}
+
+# ============================================================================
+# MAIN ENDPOINT: /simulate
+# ============================================================================
+
+@app.post("/simulate", response_model=SimResponse)
+async def simulate(req: SimRequest) -> SimResponse:
+    """
+    Execute quantum circuit with optional noise simulation and phi manifold extraction.
+    
+    - Always assumes 4 qubits
+    - Measurements fixed at t=14
+    - Returns statevector, histograms, Bloch spheres, and phi manifold (if noise enabled)
+    """
+    
+    start_time = time.time()
+    
+    # ------------------------------------------------------------------------
+    # 1. BUILD CIRCUIT
+    # ------------------------------------------------------------------------
+    
+    circuit = Circuit(num_qubits=req.num_qubits)
+    
+    # Filter out measurement gates (we'll handle them separately)
+    non_measurement_gates = [g for g in req.gates if g.name.upper() != 'M']
+    measurement_gates = [g for g in req.gates if g.name.upper() == 'M']
+    
+    # Add non-measurement gates
+    for g in sorted(non_measurement_gates, key=lambda x: x.t):
+        gate = Gate(
+            name=g.name,
+            qubits=g.qubits,
+            params=[],  # Add param parsing if needed
+            t=g.t
+        )
+        circuit.add(gate)
+    
+    # Add measurement gates at t=14
+    for g in measurement_gates:
+        gate = Gate(
+            name='M',
+            qubits=g.qubits,
+            params=[],
+            t=g.t
+        )
+        circuit.add(gate)
+    
+    circuit_build_time = time.time() - start_time
+    
+    # ------------------------------------------------------------------------
+    # 2. SIMULATE IDEAL CIRCUIT
+    # ------------------------------------------------------------------------
+    
+    ideal_start = time.time()
+    
+    backend_ideal = QtorchBackend(
+        simulate_with_noise=False,
+        persistant_data=req.persistent_mode,
+        fusion_optimizations=False,
+        circuit=circuit,
+        verbose=False
+    )
+    
+    # Execute for histogram
+    ideal_hist_counts = backend_ideal.get_histogram_data(shots=req.shots)
+    
+    # Normalize to probabilities
+    histogram_ideal = {k: v / req.shots for k, v in ideal_hist_counts.items()}
+    
+    # Get final statevector (single deterministic run)
+    backend_ideal.reset()
+    for gate in circuit.gates:
+        if gate.name.upper() != 'M':  # Skip measurements for statevector
+            backend_ideal.apply_gate(gate)
+    
+    final_state = backend_ideal.get_final_statevector()
+    statevector_strs = [
+        f"{float(torch.real(amp)):+.6f}{float(torch.imag(amp)):+.6f}i"
+        for amp in final_state
+    ]
+    significant_states = backend_ideal.get_significant_states(threshold=0.01)
+    bloch_states = [BlochState(**s) for s in significant_states]
+    
+    ideal_time = time.time() - ideal_start
+    
+    # ------------------------------------------------------------------------
+    # 3. SIMULATE NOISY CIRCUIT (if enabled)
+    # ------------------------------------------------------------------------
+    
+    histogram_noisy = None
+    phi_manifold_out = None
+    noisy_time = 0.0
+    phi_time = 0.0
+    
+    if req.noise_enabled:
+        noisy_start = time.time()
+        
+        # --- Phi Manifold Extraction ---
+        phi_start = time.time()
+        
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        
+        # Placeholder matrices (you can load calibrated ones later)
+        DecoherenceProjectionMatrix = torch.eye(3, 6, device=device, dtype=torch.float32)
+        BaselinePauliOffset = torch.zeros(3, device=device, dtype=torch.float32)
+        
+        extractor = PhiManifoldExtractor(
+            circuit=circuit,
+            DecoherenceProjectionMatrix=DecoherenceProjectionMatrix,
+            BaselinePauliOffset=BaselinePauliOffset,
+            device=device,
+        )
+        
+        # Extract manifold
+        phi_manifold_tensor = extractor.GetManifold()  # shape: (6, num_qubits, max_time)
+        
+        # Annotate circuit with noise from phi manifold
+        circuit_with_noise = extractor.annotate_circuit()
+        
+        phi_time = time.time() - phi_start
+        
+        # --- Run Noisy Simulation ---
+        backend_noisy = QtorchBackend(
+            simulate_with_noise=True,
+            persistant_data=req.persistent_mode,
+            fusion_optimizations=False,
+            circuit=circuit_with_noise,
+            verbose=False
+        )
+        
+        noisy_hist_counts = backend_noisy.get_histogram_data(shots=req.shots)
+        histogram_noisy = {k: v / req.shots for k, v in noisy_hist_counts.items()}
+        
+        noisy_time = time.time() - noisy_start
+        
+        # --- Export Phi Manifold (if requested) ---
+        if req.show_phi:
+            # Composite manifold: sum over 6 feature channels
+            composite = phi_manifold_tensor.sum(dim=0)  # (num_qubits, max_time)
+            phi_manifold_out = composite.cpu().tolist()
+    
+    # ------------------------------------------------------------------------
+    # 4. METADATA
+    # ------------------------------------------------------------------------
+    
+    total_time = time.time() - start_time
+    
+    cache_stats = backend_ideal.get_cache_stats()
+    
+    metadata = {
+        "circuit_depth": circuit.depth,
+        "circuit_size": circuit.size,
+        "timing": {
+            "total_seconds": round(total_time, 4),
+            "circuit_build_seconds": round(circuit_build_time, 4),
+            "ideal_simulation_seconds": round(ideal_time, 4),
+            "noisy_simulation_seconds": round(noisy_time, 4) if req.noise_enabled else 0.0,
+            "phi_extraction_seconds": round(phi_time, 4) if req.noise_enabled else 0.0,
+        },
+        "cache_stats": cache_stats,
+        "shots": req.shots,
+        "noise_enabled": req.noise_enabled,
+        "persistent_mode": req.persistent_mode,
+        "device": "cuda" if torch.cuda.is_available() else "cpu",
+    }
+    
+    # ------------------------------------------------------------------------
+    # 5. RETURN RESPONSE
+    # ------------------------------------------------------------------------
+    
+    return SimResponse(
+        statevector=statevector_strs,
+        histogram_ideal=histogram_ideal,
+        histogram_noisy=histogram_noisy,
+        bloch_states=bloch_states,
+        phi_manifold=phi_manifold_out,
+        metadata=metadata
+    )
+
+# ============================================================================
+# UVICORN RUNNER
+# ============================================================================
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=True)

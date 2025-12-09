@@ -305,9 +305,9 @@ body {
 
 #histCanvas,
 #blochCanvas {
-  margin-top: 6px;
+  margin-top: 5px;
   width: 100%;
-  height: 100%;
+  height: 80%;
   border: 1px solid #2b2f3a;
   background: #10131b;
   display: block;
