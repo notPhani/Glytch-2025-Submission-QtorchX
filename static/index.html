@@ -14,8 +14,10 @@
   <div id="top-bar">
     <div class="logo">QtorchX Playground</div>
     <div class="top-actions">
-      <button class="top-btn">Docs</button>
-      <button class="top-btn">GitHub</button>
+      <button class="top-btn" onclick="window.open('https://github.com/notPhani/Glytch-2025-Submission-QtorchX', '_blank')">Home</button>
+      <button class="top-btn" onclick="window.open('https://github.com/notPhani/QTorch/blob/main/README.md', '_blank')">Docs</button>
+      <button class="top-btn" onclick="window.open('https://github.com/notPhani/Glytch-2025-Submission-QtorchX', '_blank')">Github</button>
+    </div>
     </div>
   </div>
 
@@ -134,9 +136,18 @@
       </div>
     </div>
   </div>
+  <div id="loadingOverlay" class="loading-overlay hidden">
+  <div class="loading-container">
+    <div class="loading-spinner-ring"></div>
+    <div class="loading-message" id="loadingMessage">Initializing quantum simulator...</div>
+  </div>
+</div>
 
   <script src="C:\Users\HP\Glytch-2025-Submission-QtorchX\static\bloch_sphere.js"></script>
 <script src="main.js"></script>
+<!-- Loading Overlay -->
+
+
 
 </body>
 </html>

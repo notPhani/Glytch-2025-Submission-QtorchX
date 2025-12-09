@@ -2483,6 +2483,8 @@ async def simulate(req: SimRequest) -> SimResponse:
             DecoherenceProjectionMatrix=DecoherenceProjectionMatrix,
             BaselinePauliOffset=BaselinePauliOffset,
             device=device,
+            a = 2.0,
+            b = 1.6
         )
         
         # Extract manifold

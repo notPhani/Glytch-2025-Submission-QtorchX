@@ -942,7 +942,63 @@ function drawPhiLegend() {
 }
 
 // ========================================================================
+// LOADING SCREEN WITH ROTATING MESSAGES
+// ========================================================================
+
+const LOADING_MESSAGES = [
+  "🔨 Building quantum circuit...",
+  "⚛️  Initializing state vectors...",
+  "🌀 Applying quantum gates...",
+  "📊 Computing observables...",
+  "🚀 Finalizing simulation..."
+];
+
+let loadingMessageInterval = null;
+let currentMessageIndex = 0;
+
+function showLoading() {
+  const overlay = document.getElementById('loadingOverlay');
+  const messageEl = document.getElementById('loadingMessage');
+  
+  overlay.classList.remove('hidden');
+  currentMessageIndex = 0;
+  messageEl.textContent = LOADING_MESSAGES[0];
+  
+  // Rotate messages every 1.5 seconds
+  loadingMessageInterval = setInterval(() => {
+    currentMessageIndex = (currentMessageIndex + 1) % LOADING_MESSAGES.length;
+    messageEl.textContent = LOADING_MESSAGES[currentMessageIndex];
+  }, 1500);
+  
+  console.log('🎬 Loading screen shown');
+}
+
+function hideLoading() {
+  const overlay = document.getElementById('loadingOverlay');
+  const messageEl = document.getElementById('loadingMessage');
+  
+  // Clear interval
+  if (loadingMessageInterval) {
+    clearInterval(loadingMessageInterval);
+    loadingMessageInterval = null;
+  }
+  
+  // Show completion message briefly
+  messageEl.textContent = "✅ Simulation complete!";
+  
+  // Fade out after 500ms
+  setTimeout(() => {
+    overlay.classList.add('hidden');
+  }, 650);
+  
+  console.log('🎬 Loading screen hidden');
+}
+
+// ========================================================================
 // BACKEND INTEGRATION
+// ========================================================================
+// ========================================================================
+// BACKEND INTEGRATION WITH LOADING
 // ========================================================================
 
 document.getElementById('runBtn').addEventListener('click', async () => {
@@ -975,6 +1031,9 @@ document.getElementById('runBtn').addEventListener('click', async () => {
 
   console.log('📤 Sending to backend:', body);
 
+  // Show loading screen
+  showLoading();
+  
   try {
     const response = await fetch('http://localhost:8000/simulate', {
       method: 'POST',
@@ -1061,10 +1120,20 @@ Ideal vs Noisy Fidelity: ${calculateFidelity(histogramData.ideal, histogramData.
     drawCircuit();
 
     console.log('✨ UI updated successfully');
+    
+    // Hide loading screen
+    hideLoading();
 
   } catch (error) {
     console.error('❌ Simulation failed:', error);
-    alert(`Simulation Error: ${error.message}\n\nCheck console for details.`);
+    
+    // Hide loading
+    hideLoading();
+    
+    // Show error after brief delay
+    setTimeout(() => {
+      alert(`Simulation Error: ${error.message}\n\nCheck console for details.`);
+    }, 600);
     
     const metaBox = document.getElementById('metaBox');
     if (metaBox) {

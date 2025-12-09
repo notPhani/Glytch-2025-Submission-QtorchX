@@ -316,3 +316,79 @@ body {
   background: #10131b;
   display: block;
 }
+/* ========================================================================
+   LOADING OVERLAY
+   ======================================================================== */
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(16, 19, 27, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+
+.loading-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading-container {
+  text-align: center;
+}
+
+/* Pastel Purple Ring Spinner */
+.loading-spinner-ring {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 30px;
+  border: 8px solid rgba(155, 89, 182, 0.2);
+  border-top: 8px solid #9b59b6;
+  border-right: 8px solid #8e44ad;
+  border-radius: 50%;
+  animation: spin-ring 1.2s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite;
+  box-shadow: 0 0 30px rgba(155, 89, 182, 0.3);
+}
+
+@keyframes spin-ring {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.1);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+/* Loading Message */
+.loading-message {
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+  color: #9b59b6;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  animation: pulse-text 2s ease-in-out infinite;
+  text-shadow: 0 0 10px rgba(155, 89, 182, 0.5);
+}
+
+@keyframes pulse-text {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.98);
+  }
+}
