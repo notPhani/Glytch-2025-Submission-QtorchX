@@ -784,22 +784,32 @@ function getPhiColorRGBA(normalized) {
   
   let r, g, b, a;
   
-  if (normalized < 0.5) {
-    const t = normalized * 2;
-    r = Math.floor(52 + t * (148 - 52));
-    g = Math.floor(152 - t * 152);
-    b = Math.floor(219 + t * (133 - 219));
-    a = Math.floor((0.3 + t * 0.2) * 255);
-  } else {
-    const t = (normalized - 0.5) * 2;
-    r = Math.floor(148 + t * (231 - 148));
+  if (normalized < 0.33) {
+    // Black to Red (0.0 → 0.33)
+    const t = normalized / 0.33; // 0 to 1
+    r = Math.floor(t * 255);      // 0 → 255
     g = 0;
-    b = Math.floor(133 - t * 133);
-    a = Math.floor((0.5 + t * 0.3) * 255);
+    b = 0;
+    a = Math.floor((0.4 + t * 0.2) * 255); // 40% → 60% opacity
+  } else if (normalized < 0.66) {
+    // Red to Orange (0.33 → 0.66)
+    const t = (normalized - 0.33) / 0.33; // 0 to 1
+    r = 255;
+    g = Math.floor(t * 165);      // 0 → 165 (orange)
+    b = 0;
+    a = Math.floor((0.6 + t * 0.15) * 255); // 60% → 75% opacity
+  } else {
+    // Orange to White (0.66 → 1.0)
+    const t = (normalized - 0.66) / 0.34; // 0 to 1
+    r = 255;
+    g = Math.floor(165 + t * (255 - 165)); // 165 → 255
+    b = Math.floor(t * 255);      // 0 → 255
+    a = Math.floor((0.75 + t * 0.25) * 255); // 75% → 100% opacity
   }
   
   return { r, g, b, a };
 }
+
 
 function drawPhiLegend() {
   if (!window.lastPhiManifold || !document.getElementById('inspectToggle').checked) {
