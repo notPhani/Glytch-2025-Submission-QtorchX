@@ -827,18 +827,16 @@ if __name__ == "__main__":
     
     # Initialize projection matrices
     W = torch.tensor([
-    # X-errors (bit flips): Dominated by stochastic + disturbance
-    [0.15, 0.08, 0.25, 0.03, 0.08, 0.35],
-    
-    # Y-errors (bit+phase): Balanced mix (Y = iXZ)
-    [0.12, 0.12, 0.20, 0.05, 0.10, 0.25],
-    
-    # Z-errors (dephasing): Dominated by memory + disturbance
-    [0.40, 0.25, 0.45, 0.02, 0.08, 0.15]
+    # Memory, SpatDiff, Disturb, Nonlocal, Nonlin, Stochastic
+    [0.15,    0.08,     0.25,    0.03,     0.08,    0.38],  # X-errors (stochastic-heavy)
+    [0.12,    0.12,     0.20,    0.05,     0.10,    0.28],  # Y-errors (balanced)
+    [0.45,    0.25,     0.50,    0.02,     0.06,    0.18]   # Z-errors (memory+disturb heavy) ✅
 ], dtype=torch.float32)
 
-# Baseline Pauli offset (Z-errors have higher baseline)
-    B = torch.tensor([0.0005, 0.0003, 0.0025], dtype=torch.float32)
+# Baseline should ALSO be different per Pauli type!
+    B = torch.tensor([-4.0, -4.5, -3.0], dtype=torch.float32)
+#                  X     Y     Z
+# Z has higher baseline → more common (dephasing dominant!)
 #                    X       Y       Z (3x higher!)
     
     extractor = PhiManifoldExtractor(

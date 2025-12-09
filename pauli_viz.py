@@ -1,310 +1,175 @@
+import torch
+from entry import *
+# In PhiManifoldExtractor.__init__ or get_pauli_channel()
 
-def visualize_pauli_channels(
-    extractor: PhiManifoldExtractor,
-    save_path: Optional[str] = None
-):
-    """
-    Visualize X, Y, Z error channels separately.
-    Shows how 6-channel phi manifold projects into physical Pauli errors.
-    
-    Args:
-        extractor: PhiManifoldExtractor instance (after GetManifold())
-        save_path: Path to save figure (optional)
-    """
-    pauli_channel = extractor.get_pauli_channel().cpu().numpy()
-    
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
-    pauli_names = ['X-Error (Bit Flip)', 'Y-Error (Bit+Phase)', 'Z-Error (Dephasing)']
-    
-    # Find global scale for consistency (or use independent scales)
-    vmin_global = pauli_channel.min()
-    vmax_global = pauli_channel.max()
-    
-    for i, (ax, name) in enumerate(zip(axes, pauli_names)):
-        im = ax.imshow(
-            pauli_channel[i],
-            aspect='auto',
-            cmap='Reds',
-            interpolation='bilinear',
-            origin='lower',
-            vmin=vmin_global,
-            vmax=vmax_global
-        )
-        ax.set_title(name, fontsize=14, fontweight='bold')
-        ax.set_xlabel('Time Step', fontsize=12)
-        ax.set_ylabel('Qubit', fontsize=12)
-        ax.grid(alpha=0.2, linestyle='--', color='white', linewidth=0.5)
-        
-        cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-        cbar.set_label('Error Strength', fontsize=10)
-        cbar.ax.tick_params(labelsize=9)
-    
-    plt.suptitle('Pauli Error Channels from Phi Manifold', 
-                 fontsize=16, fontweight='bold')
-    plt.tight_layout()
-    
-    if save_path:
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f"✓ Saved to {save_path}")
-    
-    plt.show()
+# Hardware-calibrated projection (CORRECT!)
+W = torch.tensor([
+    # Memory, SpatDiff, Disturb, Nonlocal, Nonlin, Stochastic
+    [0.15,    0.08,     0.25,    0.03,     0.08,    0.38],  # X-errors (stochastic-heavy)
+    [0.12,    0.12,     0.20,    0.05,     0.10,    0.28],  # Y-errors (balanced)
+    [0.45,    0.25,     0.50,    0.02,     0.06,    0.18]   # Z-errors (memory+disturb heavy) ✅
+], dtype=torch.float32)
 
+# Baseline should ALSO be different per Pauli type!
+B = torch.tensor([-4.0, -4.5, -3.0], dtype=torch.float32)
+#                  X     Y     Z
+# Z has higher baseline → more common (dephasing dominant!)
 
-def visualize_pauli_with_identity(
-    extractor: PhiManifoldExtractor,
-    save_path: Optional[str] = None
-):
-    """
-    Visualize ALL 4 Pauli channels: I (no error), X, Y, Z.
-    Identity channel shows probability of NO error occurring.
-    
-    Args:
-        extractor: PhiManifoldExtractor instance (after GetManifold())
-        save_path: Path to save figure (optional)
-    """
-    pauli_channel = extractor.get_pauli_channel().cpu().numpy()
-    
-    # Compute identity (no-error) channel
-    # P_I = 1 - (P_X + P_Y + P_Z)
-    # Use sigmoid to convert error strengths to probabilities
-    from scipy.special import expit  # sigmoid
-    
-    p_x = expit(pauli_channel[0])
-    p_y = expit(pauli_channel[1])
-    p_z = expit(pauli_channel[2])
-    
-    # Normalize
-    p_total = p_x + p_y + p_z
-    p_total = np.clip(p_total, 0, 1)  # Ensure <= 1
-    
-    p_i = 1.0 - p_total  # Identity (no error)
-    
-    # Stack all 4 channels
-    all_channels = np.stack([p_i, p_x, p_y, p_z], axis=0)
-    
-    fig, axes = plt.subplots(2, 2, figsize=(16, 10))
-    axes = axes.flatten()
-    
-    channel_names = [
-        'I (No Error / Identity)',
-        'X (Bit Flip)',
-        'Y (Bit+Phase Flip)',
-        'Z (Phase Flip / Dephasing)'
-    ]
-    
-    colormaps = ['Greens', 'Reds', 'Purples', 'Blues']
-    
-    for i, (ax, name, cmap) in enumerate(zip(axes, channel_names, colormaps)):
-        im = ax.imshow(
-            all_channels[i],
-            aspect='auto',
-            cmap=cmap,
-            interpolation='bilinear',
-            origin='lower',
-            vmin=0.0,
-            vmax=1.0
-        )
-        ax.set_title(name, fontsize=14, fontweight='bold')
-        ax.set_xlabel('Time Step', fontsize=12)
-        ax.set_ylabel('Qubit', fontsize=12)
-        ax.grid(alpha=0.2, linestyle='--', color='white', linewidth=0.5)
-        
-        cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-        cbar.set_label('Probability', fontsize=10)
-        cbar.ax.tick_params(labelsize=9)
-        
-        # Add mean probability annotation
-        mean_prob = all_channels[i].mean()
-        ax.text(
-            0.02, 0.98, f"Mean: {mean_prob:.3f}",
-            transform=ax.transAxes,
-            fontsize=10,
-            verticalalignment='top',
-            bbox=dict(boxstyle='round', facecolor='white', alpha=0.8)
-        )
-    
-    plt.suptitle('Complete Pauli Channel: I, X, Y, Z Error Probabilities', 
-                 fontsize=18, fontweight='bold', y=0.995)
-    plt.tight_layout()
-    
-    if save_path:
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f"✓ Saved to {save_path}")
-    
-    plt.show()
+# ============================================================================
+# TEST 1: BELL STATE |Φ+⟩
+# ============================================================================
+print("="*70)
+print("TEST 1: BELL STATE |Φ+⟩")
+print("="*70)
 
+circuit_bell = Circuit(num_qubits=2)
+circuit_bell.add(Gate("H", [0]))
+circuit_bell.add(Gate("CNOT", [0, 1]))
 
-def visualize_pauli_importance(
-    extractor: PhiManifoldExtractor,
-    save_path: Optional[str] = None
-):
-    """
-    Bar chart showing which Pauli error type dominates.
-    
-    Args:
-        extractor: PhiManifoldExtractor instance (after GetManifold())
-        save_path: Path to save figure (optional)
-    """
-    pauli_channel = extractor.get_pauli_channel().cpu().numpy()
-    
-    # Compute total "activity" (absolute sum) for each Pauli type
-    x_total = np.abs(pauli_channel[0]).sum()
-    y_total = np.abs(pauli_channel[1]).sum()
-    z_total = np.abs(pauli_channel[2]).sum()
-    
-    total = x_total + y_total + z_total
-    
-    # Convert to percentages
-    x_pct = (x_total / total) * 100
-    y_pct = (y_total / total) * 100
-    z_pct = (z_total / total) * 100
-    
-    fig, ax = plt.subplots(figsize=(10, 6))
-    
-    names = ['X-Error\n(Bit Flip)', 'Y-Error\n(Bit+Phase)', 'Z-Error\n(Dephasing)']
-    values = [x_pct, y_pct, z_pct]
-    colors = ['#e74c3c', '#9b59b6', '#3498db']
-    
-    bars = ax.bar(names, values, color=colors, edgecolor='black', linewidth=2, alpha=0.8)
-    
-    ax.set_ylabel('Contribution to Total Error Activity (%)', fontsize=14, fontweight='bold')
-    ax.set_title('Pauli Error Type Distribution', fontsize=16, fontweight='bold')
-    ax.grid(axis='y', alpha=0.3, linestyle='--')
-    
-    # Add value labels on bars
-    for bar, val in zip(bars, values):
-        height = bar.get_height()
-        ax.text(
-            bar.get_x() + bar.get_width()/2,
-            height + 1,
-            f'{val:.1f}%',
-            ha='center',
-            fontsize=13,
-            fontweight='bold'
-        )
-    
-    plt.tight_layout()
-    
-    if save_path:
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f"✓ Saved to {save_path}")
-    
-    plt.show()
+print(f"\nCircuit: {circuit_bell}")
+print(circuit_bell.visualize())
 
+# Extract and annotate
+extractor_bell = PhiManifoldExtractor(
+    circuit_bell,
+    alpha=0.92, beta=0.12, kappa=0.65,
+    epsilon=0.003, gamma=1.2, rho=0.1,
+    sigma=0.09, a=0.6, b=2.0, DecoherenceProjectionMatrix=W, BaselinePauliOffset=B
+)
 
-def visualize_pauli_time_evolution(
-    extractor: PhiManifoldExtractor,
-    qubit: int = 0,
-    save_path: Optional[str] = None
-):
-    """
-    Line plot showing how X, Y, Z error probabilities evolve over time
-    for a specific qubit.
+manifold_bell = extractor_bell.GetManifold()
+print(f"\n✓ Manifold shape: {manifold_bell.shape}")
+
+annotated_bell = extractor_bell.annotate_circuit()
+
+# Print stats
+print("\n" + "-"*70)
+print("GATE-BY-GATE NOISE:")
+print("-"*70)
+
+for gate in annotated_bell.gates:
+    if 'noise_model' not in gate.metadata:
+        continue
     
-    Args:
-        extractor: PhiManifoldExtractor instance (after GetManifold())
-        qubit: Which qubit to plot (default: 0)
-        save_path: Path to save figure (optional)
-    """
-    pauli_channel = extractor.get_pauli_channel().cpu().numpy()
+    noise = gate.metadata['noise_model']
+    print(f"\n[t={gate.t}] {gate.name} on q{gate.qubits}")
     
-    # Convert to probabilities using sigmoid
-    from scipy.special import expit
-    
-    p_x = expit(pauli_channel[0, qubit, :])
-    p_y = expit(pauli_channel[1, qubit, :])
-    p_z = expit(pauli_channel[2, qubit, :])
-    
-    # Normalize
-    p_total = p_x + p_y + p_z
-    p_x_norm = p_x / p_total
-    p_y_norm = p_y / p_total
-    p_z_norm = p_z / p_total
-    p_i = 1.0 - (p_x_norm + p_y_norm + p_z_norm)
-    
-    time_steps = np.arange(len(p_x))
-    
-    fig, ax = plt.subplots(figsize=(14, 6))
-    
-    ax.plot(time_steps, p_i, label='I (No Error)', 
-            linewidth=2.5, marker='o', markersize=6, color='green')
-    ax.plot(time_steps, p_x_norm, label='X (Bit Flip)', 
-            linewidth=2.5, marker='s', markersize=6, color='red')
-    ax.plot(time_steps, p_y_norm, label='Y (Bit+Phase)', 
-            linewidth=2.5, marker='^', markersize=6, color='purple')
-    ax.plot(time_steps, p_z_norm, label='Z (Dephasing)', 
-            linewidth=2.5, marker='d', markersize=6, color='blue')
-    
-    ax.set_xlabel('Time Step', fontsize=14, fontweight='bold')
-    ax.set_ylabel('Error Probability', fontsize=14, fontweight='bold')
-    ax.set_title(f'Pauli Error Evolution (Qubit {qubit})', 
-                fontsize=16, fontweight='bold')
-    ax.legend(fontsize=12, loc='best')
-    ax.grid(alpha=0.3, linestyle='--')
-    ax.set_ylim([0, 1])
-    
-    plt.tight_layout()
-    
-    if save_path:
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f"✓ Saved to {save_path}")
-    
-    plt.show()
+    for q, probs in noise['pauli_probs'].items():
+        p_i, p_x, p_y, p_z = probs
+        total_err = (p_x + p_y + p_z) * 100
+        print(f"  q{q}: Error={total_err:5.2f}% (X:{p_x*100:.2f}% Y:{p_y*100:.2f}% Z:{p_z*100:.2f}%)")
+
+# Circuit-level stats
+anno = annotated_bell.metadata['noise_annotation']
+print(f"\n" + "-"*70)
+print("CIRCUIT SUMMARY:")
+print("-"*70)
+print(f"  Gates annotated: {anno['gates_annotated']}")
+print(f"  Max error prob:  {anno['max_error_probability']*100:.2f}%")
+print(f"  Error distribution:")
+print(f"    X: {anno['error_distribution']['X']:.1f}%")
+print(f"    Y: {anno['error_distribution']['Y']:.1f}%")
+print(f"    Z: {anno['error_distribution']['Z']:.1f}%")
 
 
 # ============================================================================
-# UPDATE generate_all_visualizations
+# TEST 2: TELEPORTATION
 # ============================================================================
+print("\n\n" + "="*70)
+print("TEST 2: QUANTUM TELEPORTATION")
+print("="*70)
 
-def generate_all_visualizations(extractor: PhiManifoldExtractor, prefix: str = "phi"):
-    """
-    Generate all visualizations for hackathon presentation.
-    NOW WITH PAULI CHANNELS! 🔥
+circuit_teleport = Circuit(num_qubits=3)
+
+# Prepare message
+circuit_teleport.add(Gate("H", [0]))
+
+# Create Bell pair
+circuit_teleport.add(Gate("H", [1]))
+circuit_teleport.add(Gate("CNOT", [1, 2]))
+
+# Alice's operations
+circuit_teleport.add(Gate("CNOT", [0, 1]))
+circuit_teleport.add(Gate("H", [0]))
+
+# Measurements
+circuit_teleport.add(Gate("M", [0]))
+circuit_teleport.add(Gate("M", [1]))
+
+# Bob's corrections
+circuit_teleport.add(Gate("X", [2]))
+circuit_teleport.add(Gate("Z", [2]))
+
+print(f"\nCircuit: {circuit_teleport}")
+print(circuit_teleport.visualize())
+
+# Extract and annotate
+extractor_teleport = PhiManifoldExtractor(
+    circuit_teleport,
+    alpha=0.92, beta=0.12, kappa=0.65,
+    epsilon=0.003, gamma=1.2, rho=0.1,
+    sigma=0.09, a=0.6, b=2.0, DecoherenceProjectionMatrix=W, BaselinePauliOffset=B
+)
+
+manifold_teleport = extractor_teleport.GetManifold()
+print(f"\n✓ Manifold shape: {manifold_teleport.shape}")
+
+annotated_teleport = extractor_teleport.annotate_circuit()
+
+# Print stats
+print("\n" + "-"*70)
+print("GATE-BY-GATE NOISE:")
+print("-"*70)
+
+for gate in annotated_teleport.gates:
+    if 'noise_model' not in gate.metadata:
+        continue
     
-    Args:
-        extractor: PhiManifoldExtractor instance (after GetManifold())
-        prefix: Filename prefix for saved images
-    """
-    print("="*70)
-    print("GENERATING ALL VISUALIZATIONS")
-    print("="*70)
+    noise = gate.metadata['noise_model']
     
-    # 1. Composite heatmap
-    print("\n[1/9] Composite heatmap...")
-    visualize_composite_heatmap(extractor, save_path=f"{prefix}_composite.png")
+    # Compute average error for this gate
+    avg_error = 0.0
+    for q, probs in noise['pauli_probs'].items():
+        p_i, p_x, p_y, p_z = probs
+        avg_error += (p_x + p_y + p_z)
+    avg_error = (avg_error / len(noise['pauli_probs'])) * 100
     
-    # 2. All features grid (THE MONEY SHOT!)
-    print("\n[2/9] All features grid (INDEPENDENT SCALES)...")
-    visualize_all_features(extractor, save_path=f"{prefix}_all_features.png")
-    
-    # 3. Feature importance
-    print("\n[3/9] Feature importance...")
-    visualize_feature_importance(extractor, save_path=f"{prefix}_importance.png")
-    
-    # 4. Time evolution
-    print("\n[4/9] Time evolution...")
-    visualize_time_evolution(extractor, save_path=f"{prefix}_evolution.png")
-    
-    # 5. Activity histogram
-    print("\n[5/9] Activity histogram...")
-    visualize_activity_histogram(extractor, save_path=f"{prefix}_histogram.png")
-    
-    # 6. Circuit overlay
-    print("\n[6/9] Circuit overlay...")
-    visualize_circuit_overlay(extractor, save_path=f"{prefix}_overlay.png")
-    
-    # 7. Pauli channels (X, Y, Z)
-    print("\n[7/9] Pauli channels (X, Y, Z)...")
-    visualize_pauli_channels(extractor, save_path=f"{prefix}_pauli_xyz.png")
-    
-    # 8. Pauli with identity (I, X, Y, Z)
-    print("\n[8/9] Pauli with identity (I, X, Y, Z)...")
-    visualize_pauli_with_identity(extractor, save_path=f"{prefix}_pauli_ixyz.png")
-    
-    # 9. Pauli importance
-    print("\n[9/9] Pauli error distribution...")
-    visualize_pauli_importance(extractor, save_path=f"{prefix}_pauli_importance.png")
-    
-    print("\n" + "="*70)
-    print("✓ ALL VISUALIZATIONS COMPLETE!")
-    print("="*70)
+    print(f"[t={gate.t:2d}] {gate.name:5s} q{gate.qubits} → "
+          f"Avg error: {avg_error:5.2f}% (dominant: {noise['dominant_error']})")
+
+# Circuit-level stats
+anno = annotated_teleport.metadata['noise_annotation']
+print(f"\n" + "-"*70)
+print("CIRCUIT SUMMARY:")
+print("-"*70)
+print(f"  Gates annotated: {anno['gates_annotated']}")
+print(f"  Max error prob:  {anno['max_error_probability']*100:.2f}%")
+print(f"  Error distribution:")
+print(f"    X: {anno['error_distribution']['X']:.1f}%")
+print(f"    Y: {anno['error_distribution']['Y']:.1f}%")
+print(f"    Z: {anno['error_distribution']['Z']:.1f}%")
+
+
+# ============================================================================
+# COMPARISON
+# ============================================================================
+print("\n\n" + "="*70)
+print("COMPARISON: BELL vs TELEPORTATION")
+print("="*70)
+
+bell_anno = annotated_bell.metadata['noise_annotation']
+tele_anno = annotated_teleport.metadata['noise_annotation']
+
+print(f"\n{'Metric':<30s} {'Bell':>12s} {'Teleport':>12s}")
+print("-"*70)
+print(f"{'Circuit depth':<30s} {circuit_bell.depth:>12d} {circuit_teleport.depth:>12d}")
+print(f"{'Total gates':<30s} {circuit_bell.size:>12d} {circuit_teleport.size:>12d}")
+print(f"{'Gates annotated':<30s} {bell_anno['gates_annotated']:>12d} {tele_anno['gates_annotated']:>12d}")
+print(f"{'Max error (%)':<30s} {bell_anno['max_error_probability']*100:>12.2f} {tele_anno['max_error_probability']*100:>12.2f}")
+print(f"{'X-error proportion (%)':<30s} {bell_anno['error_distribution']['X']:>12.1f} {tele_anno['error_distribution']['X']:>12.1f}")
+print(f"{'Y-error proportion (%)':<30s} {bell_anno['error_distribution']['Y']:>12.1f} {tele_anno['error_distribution']['Y']:>12.1f}")
+print(f"{'Z-error proportion (%)':<30s} {bell_anno['error_distribution']['Z']:>12.1f} {tele_anno['error_distribution']['Z']:>12.1f}")
+
+print("\n" + "="*70)
+print("✓ TESTS COMPLETE!")
+print("="*70)

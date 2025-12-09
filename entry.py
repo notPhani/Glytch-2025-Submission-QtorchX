@@ -1239,10 +1239,140 @@ class PhiManifoldExtractor:
         return pauli_channel
     #---Star Function :) Annotating the ideal circuit with noise channels at appropriate time steps---#
     # once this is complete the circuit can be simulated with noise at each time step
-
-    def annotate_circuit(self, )
-
+    def annotate_circuit(self) -> Circuit:
+        """
+        Annotate circuit gates with Pauli error probabilities from phi manifold.
         
+        For each gate at time t on qubits Q, extract error probabilities
+        from the manifold at locations (q, t) and store in gate.metadata.
+        
+        The backend can then apply noise by sampling from these probabilities
+        during circuit execution.
+        
+        Formula for each qubit q at time t:
+            p_x(q,t) = sigmoid(PauliChannel[0, q, t] - bias)
+            p_y(q,t) = sigmoid(PauliChannel[1, q, t] - bias)
+            p_z(q,t) = sigmoid(PauliChannel[2, q, t] - bias)
+            
+            Normalize: if p_total > 1, scale by (1 / p_total)
+            p_i = 1 - (p_x + p_y + p_z)  # No error probability
+        
+        Returns:
+            Circuit: Same circuit with noise_model added to gate.metadata
+        """
+        # Get Pauli channel (3, num_qubits, max_time)
+        pauli_channel = self.get_pauli_channel().cpu()
+        
+        # Shift to get realistic error rates (1-5%)
+        pauli_channel = pauli_channel - 3.0
+        
+        # Sigmoid activation
+        def sigmoid(x):
+            return 1.0 / (1.0 + torch.exp(-x))
+        
+        # Convert to probabilities
+        p_x_all = sigmoid(pauli_channel[0])  # (num_qubits, max_time)
+        p_y_all = sigmoid(pauli_channel[1])
+        p_z_all = sigmoid(pauli_channel[2])
+        
+        # Statistics tracking
+        total_gates_annotated = 0
+        max_error_prob = 0.0
+        error_distribution = {'X': 0.0, 'Y': 0.0, 'Z': 0.0}
+        
+        # ========================================================================
+        # ANNOTATE EACH GATE
+        # ========================================================================
+        for gate in self.circuit.gates:
+            if gate.t is None:
+                # Skip unscheduled gates
+                continue
+            
+            t = gate.t
+            pauli_probs = {}
+            gate_max_error = 0.0
+            dominant_error = 'I'
+            
+            # For each qubit this gate touches
+            for q in gate.qubits:
+                # Extract probabilities at this specific (qubit, time) location
+                p_x = p_x_all[q, t].item()
+                p_y = p_y_all[q, t].item()
+                p_z = p_z_all[q, t].item()
+                
+                # Normalize to ensure sum ≤ 1
+                p_total = p_x + p_y + p_z
+                
+                if p_total > 1.0:
+                    # Scale down proportionally
+                    scale = 1.0 / p_total
+                    p_x *= scale
+                    p_y *= scale
+                    p_z *= scale
+                    p_total = 1.0
+                
+                # Compute no-error probability
+                p_i = 1.0 - p_total
+                
+                # Store as [p_i, p_x, p_y, p_z]
+                pauli_probs[q] = [p_i, p_x, p_y, p_z]
+                
+                # Track dominant error for this gate
+                if p_total > gate_max_error:
+                    gate_max_error = p_total
+                    dominant_error = max(
+                        [('X', p_x), ('Y', p_y), ('Z', p_z)],
+                        key=lambda x: x[1]
+                    )[0]
+                
+                # Update global distribution
+                error_distribution['X'] += p_x
+                error_distribution['Y'] += p_y
+                error_distribution['Z'] += p_z
+            
+            # Store noise model in gate metadata
+            gate.metadata['noise_model'] = {
+                'pauli_probs': pauli_probs,
+                'source': 'phi_manifold',
+                'time_step': t,
+                'gate_name': gate.name,
+                'dominant_error': dominant_error,
+                'max_error_prob': gate_max_error,
+                'burst_weight': gate.get_burst_weight()
+            }
+            
+            total_gates_annotated += 1
+            max_error_prob = max(max_error_prob, gate_max_error)
+        
+        # ========================================================================
+        # STORE CIRCUIT-LEVEL STATISTICS
+        # ========================================================================
+        total_error = sum(error_distribution.values())
+        
+        self.circuit.metadata['noise_annotation'] = {
+            'source': 'phi_manifold',
+            'gates_annotated': total_gates_annotated,
+            'max_error_probability': max_error_prob,
+            'error_distribution': {
+                'X': (error_distribution['X'] / total_error * 100) if total_error > 0 else 0,
+                'Y': (error_distribution['Y'] / total_error * 100) if total_error > 0 else 0,
+                'Z': (error_distribution['Z'] / total_error * 100) if total_error > 0 else 0
+            },
+            'hardware_preset': getattr(self, '_hardware_preset', 'superconducting'),
+            'phi_manifold_shape': tuple(self.PhiManifold.shape),
+            'hyperparameters': {
+                'alpha': self.alpha,
+                'beta': self.beta,
+                'kappa': self.kappa,
+                'epsilon': self.epsilon,
+                'sigma': self.sigma,
+                'a': self.a,
+                'b': self.b
+            }
+        }
+        
+        return self.circuit
+ 
     # ========================================================================
     # UTILITY METHODS
     # ========================================================================
