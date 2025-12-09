@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>QtorchX Playground</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Top bar -->
+  <div id="top-bar">
+    <div class="logo">QtorchX Playground</div>
+    <div class="top-actions">
+      <button class="top-btn">Docs</button>
+      <button class="top-btn">GitHub</button>
+    </div>
+  </div>
+
+  <div id="content">
+    <!-- TOP: operations + circuit + meta -->
+    <div id="main">
+      <!-- Left panel: gate library -->
+      <div id="left-panel">
+        <div class="panel-title">Operations</div>
+
+        <div id="gate-library">
+          <!-- 1-qubit gates -->
+          <button class="gate-btn" data-gate="H">H</button>
+          <button class="gate-btn" data-gate="X">X</button>
+          <button class="gate-btn" data-gate="Y">Y</button>
+          <button class="gate-btn" data-gate="Z">Z</button>
+          <button class="gate-btn" data-gate="RX">RX</button>
+          <button class="gate-btn" data-gate="RY">RY</button>
+          <button class="gate-btn" data-gate="RZ">RZ</button>
+          <!-- 2-qubit -->
+          <button class="gate-btn" data-gate="CNOT">CNOT</button>
+          <!-- Measurement (fixed at end) -->
+          <button class="gate-btn" data-gate="M">M</button>
+        </div>
+
+        <div class="toggle-row" id="limitsText">
+          <small>Max qubits: 4 · Max gates: 15</small>
+        </div>
+
+        <div id="warning" style="margin-top:6px;font-size:11px;color:#f39c12;"></div>
+      </div>
+
+      <!-- Center panel: circuit grid -->
+      <div id="center-panel">
+        <div class="panel-header">
+          <div class="panel-header-left">
+            <span class="panel-title">Circuit</span>
+            <span class="panel-subtitle">q[0..3], c[4]</span>
+          </div>
+          <div class="panel-header-right">
+            <label class="header-toggle">
+              <input type="checkbox" id="noiseToggle">
+              <span>Noise</span>
+            </label>
+            <label class="header-toggle">
+              <input type="checkbox" id="persistToggle">
+              <span>Persistent</span>
+            </label>
+            <label class="header-toggle">
+              <input type="checkbox" id="inspectToggle">
+              <span>Inspect</span>
+            </label>
+            <button id="runBtn" class="run-btn">Run</button>
+          </div>
+        </div>
+
+        <div id="circuit-inner">
+          <canvas id="circuitCanvas"></canvas>
+        </div>
+      </div>
+
+      <!-- Right panel: meta / log -->
+      <div id="right-panel">
+        <div class="panel-header">
+          <span class="panel-title">Meta / Log</span>
+        </div>
+        <textarea id="metaBox" spellcheck="false">
+# Circuit limits:
+# - Up to 4 qubits (q[0]..q[3])
+# - Up to 15 gates (measurements auto-appended)
+# - Use Noise toggle to enable Phi manifold
+        </textarea>
+      </div>
+    </div>
+
+    <!-- BOTTOM: histogram + Bloch -->
+    <div id="bottom">
+      <div id="bottom-left">
+        <div class="panel-header">
+          <span class="panel-title">Probabilities</span>
+        </div>
+        <canvas id="histCanvas" width="600" height="220"></canvas>
+      </div>
+
+      <div id="bottom-right">
+        <div class="panel-header">
+          <span class="panel-title">Bloch Sphere (q[0])</span>
+        </div>
+        <canvas id="blochCanvas" width="260" height="220"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>

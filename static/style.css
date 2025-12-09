@@ -1,0 +1,266 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+               sans-serif;
+}
+
+/* Lock to viewport */
+html, body {
+  height: 100%;
+}
+
+body {
+  background: #12151c;
+  color: #eee;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Top bar */
+
+#top-bar {
+  flex: 0 0 48px;
+  background: #181b23;
+  border-bottom: 1px solid #2b2f3a;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+}
+
+#top-bar .logo {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.top-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.top-btn {
+  background: #252a36;
+  border: 1px solid #343947;
+  color: #e0e3ff;
+  padding: 4px 10px;
+  font-size: 13px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.top-btn:hover {
+  background: #2f3544;
+}
+
+/* Main vertical split: top (circuit) + bottom (results) */
+
+#content {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Top area: left ops + center circuit + right meta */
+
+#main {
+  flex: 0 0 300px;
+  display: grid;
+  grid-template-columns: 230px minmax(700px, 1fr) 260px; /* ops | circuit | meta */
+  border-bottom: 1px solid #2b2f3a;
+  min-height: 0;
+}
+
+/* Panels */
+
+#left-panel,
+#center-panel,
+#right-panel {
+  background: #151822;
+  border-right: 1px solid #2b2f3a;
+}
+
+#right-panel {
+  border-right: none;
+}
+
+/* Left: operations */
+
+#left-panel {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.panel-subtitle {
+  font-size: 11px;
+  color: #9ba0b5;
+  margin-left: 8px;
+}
+
+/* Gate library */
+
+#gate-library {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.gate-btn {
+  padding: 6px 0;
+  font-size: 12px;
+  border-radius: 3px;
+  border: 1px solid #3a4154;
+  background: #243047;
+  color: #eaefff;
+  cursor: pointer;
+}
+
+.gate-btn:hover {
+  background: #2f3a54;
+}
+
+.gate-btn.active-gate {
+  outline: 2px solid #0b84ff;
+}
+
+#limitsText {
+  margin-top: 10px;
+  font-size: 11px;
+  color: #9ba0b5;
+}
+
+/* Circuit header: toggles + run */
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.panel-header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.panel-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.header-toggle {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  color: #c7cadc;
+}
+
+.header-toggle input {
+  accent-color: #0b84ff;
+}
+
+.run-btn {
+  padding: 5px 10px;
+  font-size: 12px;
+  border-radius: 3px;
+  border: none;
+  background: #0b84ff;
+  color: #fff;
+  cursor: pointer;
+}
+
+.run-btn:hover {
+  background: #2b96ff;
+}
+
+/* Center: circuit panel */
+
+#center-panel {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  box-sizing: border-box;
+}
+
+#circuit-inner {
+  /* remove: flex: 1 1 auto; */
+  height: 250px;                 /* tweak 200–260px to taste */
+  border: 1px solid #2b2f3a;
+  background: #10131b;
+  padding: 4px;
+  box-sizing: border-box;
+}
+
+#circuitCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Right: meta/log */
+
+#right-panel {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  box-sizing: border-box;
+}
+
+#metaBox {
+  flex: 1 1 auto;
+  margin-top: 6px;
+  background: #10131b;
+  color: #e0e3ff;
+  border: 1px solid #2b2f3a;
+  font-family: "Fira Code", monospace;
+  font-size: 12px;
+  padding: 6px;
+  resize: none;
+}
+
+/* Bottom area: probabilities + Bloch */
+
+#bottom {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  min-height: 0;
+}
+
+#bottom-left,
+#bottom-right {
+  padding: 8px;
+  background: #151822;
+  border-right: 1px solid #2b2f3a;
+  box-sizing: border-box;
+}
+
+#bottom-right {
+  border-right: none;
+}
+
+#histCanvas,
+#blochCanvas {
+  margin-top: 6px;
+  width: 100%;
+  height: 100%;
+  border: 1px solid #2b2f3a;
+  background: #10131b;
+  display: block;
+}
