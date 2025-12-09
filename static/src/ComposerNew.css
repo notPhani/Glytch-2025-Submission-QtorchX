@@ -1,0 +1,605 @@
+/* ========================================
+   IBM QUANTUM COMPOSER - DARK THEME
+   ======================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+}
+
+.composer-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  background: #262626;
+  color: #f4f4f4;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+}
+
+/* ========================================
+   IBM TOP HEADER
+   ======================================== */
+
+.ibm-header {
+  background: #161616;
+  border-bottom: 1px solid #393939;
+  padding: 10px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 48px;
+}
+
+.ibm-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.menu-toggle {
+  background: transparent;
+  border: none;
+  color: #f4f4f4;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px;
+}
+
+.ibm-text {
+  color: #f4f4f4;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-icon {
+  background: transparent;
+  border: none;
+  color: #f4f4f4;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.region-btn,
+.signin-btn {
+  background: transparent;
+  border: none;
+  color: #0f62fe;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 4px 8px;
+  font-weight: 500;
+}
+
+.signin-btn {
+  color: #0f62fe;
+}
+
+/* ========================================
+   CIRCUIT HEADER
+   ======================================== */
+
+.circuit-header {
+  background: #262626;
+  border-bottom: 1px solid #393939;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.circuit-header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.circuit-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #f4f4f4;
+}
+
+.header-menu {
+  display: flex;
+  gap: 0;
+}
+
+.header-menu-btn {
+  background: transparent;
+  border: none;
+  color: #f4f4f4;
+  cursor: pointer;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.header-menu-btn:hover {
+  background: #393939;
+}
+
+.circuit-header-right {
+  display: flex;
+  gap: 8px;
+}
+
+.header-btn {
+  background: transparent;
+  border: none;
+  color: #f4f4f4;
+  cursor: pointer;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.header-btn:hover {
+  background: #393939;
+}
+
+.run-btn {
+  background: #0f62fe;
+  color: white;
+  border-radius: 2px;
+  font-weight: 600;
+}
+
+.run-btn:hover {
+  background: #0353e9;
+}
+
+/* ========================================
+   TOOLBAR
+   ======================================== */
+
+.toolbar {
+  background: #262626;
+  border-bottom: 1px solid #393939;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  height: 40px;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.toolbar-icon {
+  background: transparent;
+  border: none;
+  color: #f4f4f4;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px 8px;
+}
+
+.toolbar-icon:hover {
+  background: #393939;
+  border-radius: 2px;
+}
+
+.toolbar-sep {
+  width: 1px;
+  height: 20px;
+  background: #393939;
+  margin: 0 4px;
+}
+
+.alignment-dropdown {
+  background: transparent;
+  border: 1px solid #525252;
+  color: #f4f4f4;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 2px;
+  margin: 0 8px;
+}
+
+.alignment-dropdown:hover {
+  border-color: #8d8d8d;
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+/* Inspect Toggle */
+.inspect-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.inspect-toggle input {
+  display: none;
+}
+
+.toggle-circle {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #525252;
+  border-radius: 50%;
+  display: block;
+  background: transparent;
+  transition: all 0.2s;
+}
+
+.inspect-toggle input:checked + .toggle-circle {
+  border-color: #0f62fe;
+  background: #0f62fe;
+}
+
+.toggle-text {
+  font-size: 12px;
+  color: #f4f4f4;
+  margin-right: 12px;
+}
+
+/* ========================================
+   MAIN LAYOUT
+   ======================================== */
+
+.main-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  gap: 0;
+}
+
+/* ========================================
+   LEFT: OPERATIONS PANEL
+   ======================================== */
+
+.ops-panel {
+  width: 240px;
+  background: #1e1e1e;
+  border-right: 1px solid #393939;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ops-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #393939;
+  background: #262626;
+}
+
+.ops-header h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f4f4f4;
+}
+
+.ops-search {
+  background: transparent;
+  border: none;
+  color: #f4f4f4;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.gates-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.gate-btn {
+  padding: 8px 4px;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  color: #161616;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.gate-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.gate-btn:active {
+  transform: translateY(0);
+}
+
+/* ========================================
+   CENTER: CIRCUIT
+   ======================================== */
+
+.circuit-center {
+  flex: 1;
+  display: flex;
+  background: #262626;
+  overflow: hidden;
+  border-right: 1px solid #393939;
+}
+
+.circuit-qubit-labels {
+  width: 50px;
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+  border-right: 1px solid #393939;
+  justify-content: flex-start;
+  padding-top: 0;
+}
+
+.qubit-label,
+.classical-label {
+  flex: 0 0 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #a8a8a8;
+  border-bottom: 1px solid #393939;
+  font-weight: 500;
+}
+
+.classical-label {
+  background: #161616;
+  border-bottom: 2px solid #525252;
+  color: #f4f4f4;
+}
+
+.circuit-workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  overflow: auto;
+}
+
+.qubit-row,
+.classical-row {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+}
+
+.qubit-wire,
+.classical-wire {
+  width: 100%;
+  height: 2px;
+  background: #0f62fe;
+}
+
+.classical-wire {
+  background: #525252;
+  background-image: linear-gradient(90deg, #525252 50%, transparent 50%);
+  background-size: 10px 2px;
+}
+
+/* ========================================
+   RIGHT: VISUALIZATION PANEL
+   ======================================== */
+
+.viz-panel {
+  width: 320px;
+  background: #1e1e1e;
+  border-left: 1px solid #393939;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.viz-section {
+  border-bottom: 1px solid #393939;
+  padding: 12px 16px;
+}
+
+.viz-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.viz-header h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f4f4f4;
+}
+
+.viz-menu {
+  background: transparent;
+  border: none;
+  color: #a8a8a8;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* Code Section */
+.code-viz {
+  max-height: 200px;
+}
+
+.code-display {
+  background: #161616;
+  border: 1px solid #393939;
+  border-radius: 2px;
+  padding: 12px;
+  overflow-x: auto;
+}
+
+.code-display pre {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: #a8a8a8;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Q-Sphere Section */
+.sphere-viz {
+  display: flex;
+  flex-direction: column;
+}
+
+.sphere-container {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0;
+}
+
+.sphere-container > div {
+  display: flex;
+  justify-content: center;
+}
+
+.sphere-legend {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #393939;
+}
+
+.sphere-legend label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #a8a8a8;
+  cursor: pointer;
+}
+
+.sphere-legend input {
+  cursor: pointer;
+}
+
+/* Probabilities Section */
+.prob-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.prob-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  height: 24px;
+  font-size: 11px;
+}
+
+.prob-label {
+  min-width: 50px;
+  color: #a8a8a8;
+  font-weight: 500;
+}
+
+.prob-bar-bg {
+  flex: 1;
+  height: 16px;
+  background: #393939;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.prob-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0f62fe, #0353e9);
+  transition: width 0.3s ease;
+}
+
+.prob-val {
+  min-width: 40px;
+  text-align: right;
+  color: #f4f4f4;
+  font-weight: 600;
+}
+
+.prob-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #8d8d8d;
+  padding: 8px 0;
+  margin-bottom: 8px;
+}
+
+.prob-title {
+  font-size: 11px;
+  color: #a8a8a8;
+  text-align: center;
+}
+
+/* ========================================
+   SCROLLBARS
+   ======================================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #525252;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #8d8d8d;
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+@media (max-width: 1024px) {
+  .ops-panel {
+    width: 200px;
+  }
+  
+  .viz-panel {
+    width: 280px;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-layout {
+    flex-direction: column;
+  }
+
+  .ops-panel,
+  .viz-panel {
+    width: 100%;
+    height: 200px;
+    border-right: none;
+  }
+}
