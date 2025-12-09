@@ -16,6 +16,61 @@ const N_QUBITS = 4;
 const HAS_CLASSICAL = true;
 const N_STEPS = 15;
 const MAX_GATES = 15;
+// ========================================================================
+// GATE COLOR SCHEME
+// ========================================================================
+
+const GATE_COLORS = {
+  // Basic gates (Pastel Blue/Purple family)
+  'H': { fill: '#9b59b6', stroke: '#8e44ad', text: '#fff' },      // Purple
+  'X': { fill: '#3498db', stroke: '#2980b9', text: '#fff' },      // Blue
+  'Y': { fill: '#5dade2', stroke: '#3498db', text: '#fff' },      // Light Blue
+  'Z': { fill: '#a29bfe', stroke: '#6c5ce7', text: '#fff' },      // Periwinkle
+  'I': { fill: '#bdc3c7', stroke: '#95a5a6', text: '#2c3e50' },   // Gray (identity)
+  
+  // Phase gates (Pastel Green/Teal family)
+  'S': { fill: '#1abc9c', stroke: '#16a085', text: '#fff' },      // Teal
+  'T': { fill: '#2ecc71', stroke: '#27ae60', text: '#fff' },      // Green
+  'SDG': { fill: '#48c9b0', stroke: '#1abc9c', text: '#fff' },    // Aqua
+  'TDG': { fill: '#58d68d', stroke: '#2ecc71', text: '#fff' },    // Mint
+  
+  // Rotation gates (Pastel Orange/Yellow family)
+  'RX': { fill: '#f39c12', stroke: '#e67e22', text: '#fff' },     // Orange
+  'RY': { fill: '#f1c40f', stroke: '#f39c12', text: '#2c3e50' },  // Yellow
+  'RZ': { fill: '#e67e22', stroke: '#d35400', text: '#fff' },     // Dark Orange
+  'Rx': { fill: '#f39c12', stroke: '#e67e22', text: '#fff' },     // Alias
+  'Ry': { fill: '#f1c40f', stroke: '#f39c12', text: '#2c3e50' },  // Alias
+  'Rz': { fill: '#e67e22', stroke: '#d35400', text: '#fff' },     // Alias
+  
+  // Two-qubit gates (Darker, contrasting colors)
+  'CNOT': { fill: '#e74c3c', stroke: '#c0392b', text: '#fff' },   // Red
+  'CX': { fill: '#e74c3c', stroke: '#c0392b', text: '#fff' },     // Red (alias)
+  'CZ': { fill: '#c0392b', stroke: '#922b21', text: '#fff' },     // Dark Red
+  'SWAP': { fill: '#8e44ad', stroke: '#6c3483', text: '#fff' },   // Purple
+  'CY': { fill: '#d91e48', stroke: '#a93226', text: '#fff' },     // Crimson
+  
+  // Three-qubit gates (Very dark, high contrast)
+  'TOFFOLI': { fill: '#1a1a2e', stroke: '#16213e', text: '#fff' }, // Near Black
+  'CCNOT': { fill: '#1a1a2e', stroke: '#16213e', text: '#fff' },   // Near Black
+  'FREDKIN': { fill: '#0f3460', stroke: '#16213e', text: '#fff' }, // Navy
+  
+  // Special gates
+  'U': { fill: '#ff6b6b', stroke: '#ee5a6f', text: '#fff' },      // Coral
+  'U1': { fill: '#ff6b6b', stroke: '#ee5a6f', text: '#fff' },     
+  'U2': { fill: '#ff8787', stroke: '#ff6b6b', text: '#fff' },     
+  'U3': { fill: '#ffa07a', stroke: '#ff8787', text: '#fff' },     
+  
+  // Measurement (Special - Blue)
+  'M': { fill: '#2980b9', stroke: '#1f618d', text: '#fff' },      // Measurement Blue
+  
+  // Default fallback
+  'DEFAULT': { fill: '#34495e', stroke: '#2c3e50', text: '#fff' }
+};
+
+function getGateColor(gateName) {
+  return GATE_COLORS[gateName.toUpperCase()] || GATE_COLORS['DEFAULT'];
+}
+
 
 // Circuit data structure: circuit[q][t] = gate object | null
 const circuit = Array.from({ length: N_QUBITS }, () =>
@@ -350,7 +405,6 @@ function drawCircuit() {
   // 5. Ghost gate (dragging)
   if (dragging && dragGate) drawDraggingGate();
 }
-
 function drawGateGlyph(gate) {
   const { name, qubits, t } = gate;
   const pad = 4;
@@ -365,7 +419,10 @@ function drawGateGlyph(gate) {
     const yControl = control * cellH + cellH / 2;
     const yTarget = target * cellH + cellH / 2;
     
-    ctx.strokeStyle = '#e74c3c';
+    const colors = getGateColor('CNOT');
+    
+    // Connecting line
+    ctx.strokeStyle = colors.fill;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(xCenter, yTarget);
@@ -373,48 +430,67 @@ function drawGateGlyph(gate) {
     ctx.stroke();
     
     // Control dot (filled)
-    ctx.fillStyle = '#e74c3c';
+    ctx.fillStyle = colors.fill;
     ctx.beginPath();
     ctx.arc(xCenter, yControl, Math.min(cellH, cellW) * 0.18, 0, 2 * Math.PI);
     ctx.fill();
     
+    // Stroke around control
+    ctx.strokeStyle = colors.stroke;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
     // Target (⊕)
+    ctx.strokeStyle = colors.fill;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(xCenter, yTarget, Math.min(cellH, cellW) * 0.18, 0, 2 * Math.PI);
     ctx.stroke();
+    
     ctx.beginPath();
     ctx.moveTo(xCenter - 6, yTarget);
     ctx.lineTo(xCenter + 6, yTarget);
     ctx.moveTo(xCenter, yTarget - 6);
     ctx.lineTo(xCenter, yTarget + 6);
     ctx.stroke();
+    
     return;
   }
   
-  // Single-qubit gate
+  // Single-qubit gate (or other multi-qubit gates drawn as boxes)
   const q = qubits[0];
   const x = t * cellW;
   const y = q * cellH;
-  
-  ctx.strokeStyle = '#222';
-  ctx.fillStyle = '#e74c3c';
-  
   const w = cellW - 2 * pad;
   const h = cellH - 2 * pad;
   
+  const colors = getGateColor(name);
+  
+  // Draw gate box with gradient
+  const gradient = ctx.createLinearGradient(x + pad, y + pad, x + pad, y + pad + h);
+  gradient.addColorStop(0, colors.fill);
+  gradient.addColorStop(1, colors.stroke);
+  
+  ctx.fillStyle = gradient;
   ctx.fillRect(x + pad, y + pad, w, h);
+  
+  // Border
+  ctx.strokeStyle = colors.stroke;
+  ctx.lineWidth = 2;
   ctx.strokeRect(x + pad, y + pad, w, h);
   
-  ctx.fillStyle = '#fff';
-  ctx.font = '12px monospace';
+  // Gate label
+  ctx.fillStyle = colors.text;
+  ctx.font = 'bold 12px monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(name, x + cellW / 2, y + cellH / 2);
 }
-
 function drawMeasurements() {
   const t = N_STEPS - 1;
   const pad = 4;
+  
+  const colors = getGateColor('M');
   
   for (let q = 0; q < N_QUBITS; q++) {
     const x = t * cellW;
@@ -422,13 +498,20 @@ function drawMeasurements() {
     const w = cellW - 2 * pad;
     const h = cellH - 2 * pad;
     
-    ctx.strokeStyle = '#222';
-    ctx.fillStyle = '#2980b9';
+    // Gradient fill
+    const gradient = ctx.createLinearGradient(x + pad, y + pad, x + pad, y + pad + h);
+    gradient.addColorStop(0, colors.fill);
+    gradient.addColorStop(1, colors.stroke);
+    
+    ctx.fillStyle = gradient;
     ctx.fillRect(x + pad, y + pad, w, h);
+    
+    ctx.strokeStyle = colors.stroke;
+    ctx.lineWidth = 2;
     ctx.strokeRect(x + pad, y + pad, w, h);
     
-    ctx.fillStyle = '#fff';
-    ctx.font = '12px monospace';
+    ctx.fillStyle = colors.text;
+    ctx.font = 'bold 12px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('M', x + cellW / 2, y + cellH / 2);
@@ -441,20 +524,37 @@ function drawDraggingGate() {
   
   if (q !== null && t !== null && q < N_QUBITS && t !== N_STEPS - 1) {
     const x = t * cellW, y = q * cellH;
-    ctx.fillStyle = 'rgba(231, 126, 35, 0.3)';
+    const colors = getGateColor(dragGate.name);
+    
+    // Highlight target cell with gate color
+    ctx.fillStyle = colors.fill + '30'; // 30 = ~20% opacity in hex
     ctx.fillRect(x + 1, y + 1, cellW - 2, cellH - 2);
   }
   
   const w = cellW - 2 * pad;
   const h = cellH - 2 * pad;
   
-  ctx.fillStyle = '#e74c3c';
+  const colors = getGateColor(dragGate.name);
+  
+  // Draw ghost gate with gradient
+  const gradient = ctx.createLinearGradient(
+    dragX - w / 2, 
+    dragY - h / 2, 
+    dragX - w / 2, 
+    dragY + h / 2
+  );
+  gradient.addColorStop(0, colors.fill);
+  gradient.addColorStop(1, colors.stroke);
+  
+  ctx.fillStyle = gradient;
   ctx.fillRect(dragX - w / 2, dragY - h / 2, w, h);
-  ctx.strokeStyle = '#222';
+  
+  ctx.strokeStyle = colors.stroke;
+  ctx.lineWidth = 2;
   ctx.strokeRect(dragX - w / 2, dragY - h / 2, w, h);
   
-  ctx.fillStyle = '#fff';
-  ctx.font = '12px monospace';
+  ctx.fillStyle = colors.text;
+  ctx.font = 'bold 12px monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(dragGate.name, dragX, dragY);
