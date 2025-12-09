@@ -1,0 +1,547 @@
+/* ========================================
+   QUANTUM CIRCUIT COMPOSER STYLES
+   ======================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.composer-container {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #1a1a1a;
+  color: #e5e7eb;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* ========================================
+   HEADER
+   ======================================== */
+
+.composer-header {
+  background: #0f0f0f;
+  border-bottom: 1px solid #333;
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 100;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.back-button {
+  background: transparent;
+  border: none;
+  color: #0ea5e9;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.back-button:hover {
+  background: rgba(14, 165, 233, 0.1);
+}
+
+.header-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #e5e7eb;
+}
+
+.header-right {
+  display: flex;
+  gap: 10px;
+}
+
+.save-button,
+.run-button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.save-button {
+  background: transparent;
+  color: #0ea5e9;
+  border: 1px solid #0ea5e9;
+}
+
+.save-button:hover {
+  background: rgba(14, 165, 233, 0.1);
+}
+
+.run-button {
+  background: #0ea5e9;
+  color: #000;
+  font-weight: 600;
+}
+
+.run-button:hover {
+  background: #0891b2;
+}
+
+/* ========================================
+   MAIN LAYOUT
+   ======================================== */
+
+.composer-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ========================================
+   OPERATIONS PANEL (LEFT)
+   ======================================== */
+
+.operations-panel {
+  width: 240px;
+  background: #111111;
+  border-right: 1px solid #333;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.operations-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.operations-header h2 {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #a0aec0;
+}
+
+.search-button {
+  background: transparent;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+}
+
+.operations-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.op-button {
+  padding: 12px 8px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #000;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.op-h, .op-x, .op-y, .op-z {
+  background: #ff6b6b;
+}
+
+.op-s, .op-t, .op-t-dag, .op-s-dag, .op-p {
+  background: #c0c0c0;
+}
+
+.op-t-prime, .op-s-prime {
+  background: #c0c0c0;
+}
+
+.op-rz, .op-rx, .op-ry {
+  background: #ffc75f;
+}
+
+.op-rxx, .op-rzz {
+  background: #ff9999;
+}
+
+.op-u {
+  background: #c0c0c0;
+}
+
+.op-rccx, .op-rc3x {
+  background: #9999ff;
+}
+
+.op-measure {
+  background: #00b4d8;
+  color: #fff;
+}
+
+.op-button:hover {
+  opacity: 0.8;
+  transform: translateY(-1px);
+}
+
+/* ========================================
+   MAIN CONTENT AREA
+   ======================================== */
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Toolbar */
+.toolbar {
+  background: #0f0f0f;
+  border-bottom: 1px solid #333;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 50;
+}
+
+.toolbar-button {
+  background: transparent;
+  border: none;
+  color: #a0aec0;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.toolbar-button:hover {
+  background: rgba(14, 165, 233, 0.1);
+  color: #0ea5e9;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: #333;
+  margin: 0 4px;
+}
+
+.toolbar-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.toolbar-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.toolbar-toggle input[type="checkbox"]:checked {
+  accent-color: #0ea5e9;
+}
+
+.toggle-label {
+  font-size: 12px;
+  color: #a0aec0;
+}
+
+.noise-toggle input:checked ~ .toggle-label,
+.optimization-toggle input:checked ~ .toggle-label {
+  color: #0ea5e9;
+  font-weight: 500;
+}
+
+/* Circuit Editor */
+.circuit-editor {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  background: #1a1a1a;
+}
+
+.circuit-info {
+  width: 200px;
+  border-right: 1px solid #333;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.circuit-metadata {
+  background: rgba(14, 165, 233, 0.05);
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.circuit-metadata h3 {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #0ea5e9;
+  margin-bottom: 10px;
+  letter-spacing: 0.5px;
+}
+
+.metadata-content {
+  font-size: 12px;
+  color: #a0aec0;
+  line-height: 1.8;
+}
+
+.metadata-content p {
+  margin: 4px 0;
+}
+
+.metadata-content strong {
+  color: #e5e7eb;
+}
+
+.circuit-canvas {
+  flex: 1;
+  overflow: auto;
+  padding: 40px;
+  background: #1a1a1a;
+}
+
+.circuit-qubits {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.qubit-line,
+.classical-line {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.qubit-label,
+.classical-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #a0aec0;
+  min-width: 40px;
+}
+
+.qubit-wire,
+.classical-wire {
+  flex: 1;
+  height: 2px;
+  background: #0ea5e9;
+  position: relative;
+}
+
+.classical-wire {
+  border-top: 2px dashed #0ea5e9;
+  height: 0;
+}
+
+/* ========================================
+   VISUALIZATION PANEL (RIGHT)
+   ======================================== */
+
+.visualization-panel {
+  width: 300px;
+  background: #111111;
+  border-left: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.viz-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #333;
+}
+
+.viz-header h3 {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #a0aec0;
+  letter-spacing: 0.5px;
+}
+
+.refresh-button {
+  background: transparent;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.viz-content {
+  padding: 16px;
+  flex: 1;
+}
+
+.qasm-code {
+  background: #0f0f0f;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+
+.qasm-code pre {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: #a0aec0;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.viz-section {
+  margin-bottom: 20px;
+}
+
+.viz-section h4 {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #0ea5e9;
+  margin-bottom: 10px;
+  letter-spacing: 0.5px;
+}
+
+.q-sphere-placeholder {
+  background: #0f0f0f;
+  border: 1px solid #333;
+  border-radius: 4px;
+  height: 250px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.sphere-visualization {
+  position: relative;
+  width: 160px;
+  height: 160px;
+}
+
+.probabilities-chart {
+  background: #0f0f0f;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 10px;
+}
+
+.prob-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: #a0aec0;
+}
+
+.prob-label {
+  min-width: 40px;
+  text-align: right;
+}
+
+.prob-value {
+  background: linear-gradient(90deg, #0ea5e9, #06b6d4);
+  height: 20px;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 6px;
+  color: #fff;
+  font-size: 10px;
+}
+
+/* ========================================
+   SCROLLBAR STYLING
+   ======================================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+@media (max-width: 1200px) {
+  .operations-panel {
+    width: 200px;
+  }
+
+  .visualization-panel {
+    width: 250px;
+  }
+}
+
+@media (max-width: 768px) {
+  .composer-content {
+    flex-direction: column;
+  }
+
+  .operations-panel,
+  .visualization-panel {
+    width: 100%;
+    height: 200px;
+    overflow-x: auto;
+    border-right: none;
+    border-bottom: 1px solid #333;
+  }
+
+  .operations-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}

@@ -1,6 +1,5 @@
 import torch
 from entry import *
-# In PhiManifoldExtractor.__init__ or get_pauli_channel()
 
 # Hardware-calibrated projection (CORRECT!)
 W = torch.tensor([
@@ -15,9 +14,9 @@ B = torch.tensor([-4.0, -4.5, -3.0], dtype=torch.float32)
 #                  X     Y     Z
 # Z has higher baseline → more common (dephasing dominant!)
 
-# ============================================================================
+#============================================================================
 # TEST 1: BELL STATE |Φ+⟩
-# ============================================================================
+#============================================================================
 print("="*70)
 print("TEST 1: BELL STATE |Φ+⟩")
 print("="*70)
@@ -34,7 +33,9 @@ extractor_bell = PhiManifoldExtractor(
     circuit_bell,
     alpha=0.92, beta=0.12, kappa=0.65,
     epsilon=0.003, gamma=1.2, rho=0.1,
-    sigma=0.09, a=0.6, b=2.0, DecoherenceProjectionMatrix=W, BaselinePauliOffset=B
+    sigma=0.09, a=0.6, b=2.0, 
+    DecoherenceProjectionMatrix=W,
+    BaselinePauliOffset=B
 )
 
 manifold_bell = extractor_bell.GetManifold()
@@ -72,9 +73,9 @@ print(f"    Y: {anno['error_distribution']['Y']:.1f}%")
 print(f"    Z: {anno['error_distribution']['Z']:.1f}%")
 
 
-# ============================================================================
-# TEST 2: TELEPORTATION
-# ============================================================================
+#============================================================================
+# TEST 2: QUANTUM TELEPORTATION
+#============================================================================
 print("\n\n" + "="*70)
 print("TEST 2: QUANTUM TELEPORTATION")
 print("="*70)
@@ -108,7 +109,9 @@ extractor_teleport = PhiManifoldExtractor(
     circuit_teleport,
     alpha=0.92, beta=0.12, kappa=0.65,
     epsilon=0.003, gamma=1.2, rho=0.1,
-    sigma=0.09, a=0.6, b=2.0, DecoherenceProjectionMatrix=W, BaselinePauliOffset=B
+    sigma=0.09, a=0.6, b=2.0,
+    DecoherenceProjectionMatrix=W,
+    BaselinePauliOffset=B
 )
 
 manifold_teleport = extractor_teleport.GetManifold()
@@ -150,9 +153,9 @@ print(f"    Y: {anno['error_distribution']['Y']:.1f}%")
 print(f"    Z: {anno['error_distribution']['Z']:.1f}%")
 
 
-# ============================================================================
+#============================================================================
 # COMPARISON
-# ============================================================================
+#============================================================================
 print("\n\n" + "="*70)
 print("COMPARISON: BELL vs TELEPORTATION")
 print("="*70)

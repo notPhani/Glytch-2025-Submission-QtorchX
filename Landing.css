@@ -1,0 +1,452 @@
+/* ========================================
+   QUANTUM THEME LANDING PAGE STYLES
+   ======================================== */
+
+:root {
+  --q-cyan: #22d3ee;
+  --q-violet: #a855f7;
+  --q-lime: #bef264;
+  --q-dark-bg: #020617;
+  --q-dark-surface: #0f172a;
+  --q-border: rgba(34, 211, 238, 0.2);
+}
+
+/* ========================================
+   BASE STYLES
+   ======================================== */
+
+.landing-container {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #020617 0%, #0f172a 50%, #020617 100%);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* ========================================
+   PARTICLE SYSTEM
+   ======================================== */
+
+.q-dots-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.q-dot {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.6;
+  will-change: transform;
+}
+
+/* Quantum Float Animation */
+@keyframes q-float {
+  0% {
+    transform: translateY(0) translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateY(-100px) translateX(50px);
+    opacity: 0.8;
+  }
+  90% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(-200px) translateX(0);
+    opacity: 0;
+  }
+}
+
+/* ========================================
+   CONTENT WRAPPER
+   ======================================== */
+
+.landing-content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 1200px;
+  padding: 60px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 120px;
+}
+
+/* ========================================
+   HERO SECTION
+   ======================================== */
+
+.hero-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 30px;
+  min-height: 60vh;
+  padding: 40px 20px;
+}
+
+.hero-title {
+  font-size: clamp(3rem, 10vw, 5rem);
+  font-weight: 900;
+  letter-spacing: -2px;
+  margin: 0;
+  background: linear-gradient(90deg, #22d3ee 0%, #a855f7 50%, #22d3ee 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-shift 6s ease infinite;
+  filter: drop-shadow(0 0 30px rgba(34, 211, 238, 0.3));
+}
+
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% center;
+  }
+  50% {
+    background-position: 100% center;
+  }
+}
+
+.hero-subtitle {
+  font-size: clamp(1.2rem, 3vw, 1.5rem);
+  color: rgba(226, 232, 240, 0.8);
+  max-width: 600px;
+  margin: 0;
+  font-weight: 300;
+  letter-spacing: 0.5px;
+  line-height: 1.6;
+}
+
+.hero-cta {
+  margin-top: 30px;
+}
+
+/* ========================================
+   CTA BUTTON - QUANTUM PUNCH
+   ======================================== */
+
+.q-btn-quantum {
+  padding: 16px 40px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border: 2px solid #22d3ee;
+  background: rgba(34, 211, 238, 0.1);
+  color: #22d3ee;
+  cursor: pointer;
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  box-shadow: 0 0 30px rgba(34, 211, 238, 0.2), inset 0 0 20px rgba(34, 211, 238, 0.1);
+}
+
+.q-btn-quantum::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(34, 211, 238, 0.2);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: width 0.6s, height 0.6s;
+}
+
+.q-btn-quantum:hover {
+  background: rgba(34, 211, 238, 0.2);
+  box-shadow: 0 0 60px rgba(34, 211, 238, 0.5), inset 0 0 20px rgba(34, 211, 238, 0.2);
+  border-color: #22d3ee;
+}
+
+.q-btn-quantum:active {
+  animation: q-punch 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes q-punch {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Pulse animation */
+@keyframes q-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(34, 211, 238, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(34, 211, 238, 0.8);
+  }
+}
+
+/* ========================================
+   FEATURES SECTION
+   ======================================== */
+
+.features-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 40px;
+  padding: 40px 20px;
+  margin-bottom: 60px;
+}
+
+/* ========================================
+   GLASS MORPHISM CARDS
+   ======================================== */
+
+.q-glass-card {
+  padding: 40px;
+  border-radius: 16px;
+  backdrop-filter: blur(20px);
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.q-glass-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+.q-glass-card:hover {
+  background: rgba(15, 23, 42, 0.6);
+  border-color: rgba(34, 211, 238, 0.5);
+}
+
+.q-glass-card:hover::before {
+  opacity: 0.5;
+}
+
+.q-glass-card h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.q-glass-card p {
+  font-size: 1rem;
+  color: rgba(226, 232, 240, 0.7);
+  line-height: 1.6;
+  margin: 0;
+  font-weight: 300;
+}
+
+.card-icon {
+  font-size: 3rem;
+  margin: 10px 0;
+}
+
+/* ========================================
+   ACCENT BOX COLORS
+   ======================================== */
+
+/* Cyan Box */
+.q-box-cyan {
+  border-color: rgba(34, 211, 238, 0.3);
+}
+
+.q-box-cyan::before {
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.4) 0%, transparent 70%);
+}
+
+.q-box-cyan h3 {
+  color: #22d3ee;
+}
+
+.q-box-cyan:hover {
+  border-color: rgba(34, 211, 238, 0.6);
+  box-shadow: 0 20px 60px rgba(34, 211, 238, 0.2), inset 0 0 30px rgba(34, 211, 238, 0.1);
+  background: rgba(15, 23, 42, 0.7);
+}
+
+.q-icon-cyan {
+  filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.5));
+}
+
+/* Violet Box */
+.q-box-violet {
+  border-color: rgba(168, 85, 247, 0.3);
+}
+
+.q-box-violet::before {
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.4) 0%, transparent 70%);
+}
+
+.q-box-violet h3 {
+  color: #a855f7;
+}
+
+.q-box-violet:hover {
+  border-color: rgba(168, 85, 247, 0.6);
+  box-shadow: 0 20px 60px rgba(168, 85, 247, 0.2), inset 0 0 30px rgba(168, 85, 247, 0.1);
+  background: rgba(15, 23, 42, 0.7);
+}
+
+.q-icon-violet {
+  filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.5));
+}
+
+/* Lime Box */
+.q-box-lime {
+  border-color: rgba(190, 242, 100, 0.3);
+}
+
+.q-box-lime::before {
+  background: radial-gradient(circle, rgba(190, 242, 100, 0.4) 0%, transparent 70%);
+}
+
+.q-box-lime h3 {
+  color: #bef264;
+}
+
+.q-box-lime:hover {
+  border-color: rgba(190, 242, 100, 0.6);
+  box-shadow: 0 20px 60px rgba(190, 242, 100, 0.2), inset 0 0 30px rgba(190, 242, 100, 0.1);
+  background: rgba(15, 23, 42, 0.7);
+}
+
+.q-icon-lime {
+  filter: drop-shadow(0 0 8px rgba(190, 242, 100, 0.5));
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+@media (max-width: 768px) {
+  .landing-content {
+    padding: 40px 20px;
+    gap: 80px;
+  }
+
+  .hero-title {
+    font-size: clamp(2.5rem, 8vw, 4rem);
+  }
+
+  .hero-subtitle {
+    font-size: clamp(1rem, 2.5vw, 1.2rem);
+  }
+
+  .features-section {
+    grid-template-columns: 1fr;
+    gap: 30px;
+    padding: 20px;
+  }
+
+  .q-glass-card {
+    padding: 30px;
+  }
+
+  .q-btn-quantum {
+    padding: 14px 30px;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .landing-container {
+    min-height: auto;
+  }
+
+  .landing-content {
+    padding: 30px 20px;
+    gap: 60px;
+  }
+
+  .hero-section {
+    min-height: auto;
+    padding: 30px 0;
+  }
+
+  .hero-title {
+    font-size: 2.5rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1rem;
+  }
+
+  .features-section {
+    gap: 20px;
+    padding: 0;
+  }
+
+  .q-glass-card {
+    padding: 25px;
+  }
+
+  .card-icon {
+    font-size: 2rem;
+  }
+
+  .q-glass-card h3 {
+    font-size: 1.25rem;
+  }
+
+  .q-glass-card p {
+    font-size: 0.9rem;
+  }
+}
+
+/* ========================================
+   ACCESSIBILITY
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .q-dot,
+  .hero-title,
+  .q-btn-quantum,
+  .q-glass-card {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* Dark mode (already applied by default) */
+@media (prefers-color-scheme: dark) {
+  .landing-container {
+    color-scheme: dark;
+  }
+}
