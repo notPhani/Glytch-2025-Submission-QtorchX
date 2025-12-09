@@ -303,11 +303,15 @@ body {
   border-right: none;
 }
 
-#histCanvas,
+#histCanvas{
+    width: 100%;
+    height: 50%;
+    display: block;
+}
 #blochCanvas {
   margin-top: 5px;
   width: 100%;
-  height: 80%;
+  height: 60%;
   border: 1px solid #2b2f3a;
   background: #10131b;
   display: block;

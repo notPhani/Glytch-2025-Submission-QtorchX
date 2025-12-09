@@ -1,3 +1,15 @@
+// ========================================================================
+// QTORCHX QUANTUM CIRCUIT SIMULATOR - FRONTEND
+// ========================================================================
+// Features:
+// - High-DPI canvas rendering (Retina/4K support)
+// - Drag-and-drop gate placement
+// - Real-time circuit visualization
+// - Phi manifold heatmap with bilinear interpolation
+// - Histogram display (ideal vs noisy)
+// - Bloch sphere integration
+// - Backend API integration
+// ========================================================================
 
 // ---- CONFIG ----
 const N_QUBITS = 4;
@@ -5,11 +17,12 @@ const HAS_CLASSICAL = true;
 const N_STEPS = 15;
 const MAX_GATES = 15;
 
-// circuit[q][t] = user gate | null (M is visual only; added to payload on run)
+// Circuit data structure: circuit[q][t] = gate object | null
 const circuit = Array.from({ length: N_QUBITS }, () =>
   Array.from({ length: N_STEPS }, () => null)
 );
-let gateList = [];
+
+let gateList = []; // List of all placed gates
 
 // Canvas + geometry
 const canvas = document.getElementById('circuitCanvas');
@@ -17,36 +30,61 @@ const ctx = canvas.getContext('2d');
 const rows = N_QUBITS + (HAS_CLASSICAL ? 1 : 0);
 let W, H, cellW, cellH;
 
+// ========================================================================
+// HIGH-DPI CANVAS INITIALIZATION
+// ========================================================================
+
 function syncGeometry() {
   const container = document.getElementById('circuit-inner');
   const rect = container.getBoundingClientRect();
-  const padding = 4; // matches #circuit-inner padding
-  canvas.width = rect.width - 2 * padding;
-  canvas.height = rect.height - 2* padding;
-  W = canvas.width;
-  H = canvas.height;
+  const padding = 4;
+  
+  // CSS dimensions (what user sees)
+  const displayWidth = rect.width - 2 * padding;
+  const displayHeight = rect.height - 2 * padding;
+  
+  // Device pixel ratio (2x on Retina, 1x on standard)
+  const dpr = window.devicePixelRatio || 1;
+  
+  // Set actual canvas size (high resolution)
+  canvas.width = displayWidth * dpr;
+  canvas.height = displayHeight * dpr;
+  
+  // Set CSS size (what gets displayed)
+  canvas.style.width = displayWidth + 'px';
+  canvas.style.height = displayHeight + 'px';
+  
+  // Scale context to match
+  ctx.scale(dpr, dpr);
+  
+  // Use CSS dimensions for geometry calculations
+  W = displayWidth;
+  H = displayHeight;
   cellW = W / N_STEPS;
   cellH = H / rows;
+  
+  console.log(`📐 Circuit canvas: ${canvas.width}×${canvas.height} (${dpr}x DPR), Display: ${W}×${H}`);
 }
 
 syncGeometry();
+
 window.addEventListener('resize', () => {
   syncGeometry();
   drawCircuit();
   syncHistogramCanvas();
 });
 
-// Drag state
+// ========================================================================
+// GATE FILTERING & SEARCH
+// ========================================================================
+
 let selectedGateType = null;
 let dragging = false;
-let dragGate = null; // { name }
+let dragGate = null;
 let dragX = 0, dragY = 0;
-
-// ---------- Gate filtering state ----------
-let activeFilters = new Set(); // e.g., 'basic', 'rotation', 'multi'
+let activeFilters = new Set();
 let searchQuery = '';
 
-// Gate categories mapping
 const gateCategories = {
   'H': 'basic',
   'X': 'basic',
@@ -63,21 +101,19 @@ const gateCategories = {
   'CZ': 'multi'
 };
 
-// Filter gate buttons based on active filters and search
 function updateGateVisibility() {
   const gateButtons = document.querySelectorAll('.gate-btn');
-
   gateButtons.forEach(btn => {
     const gateName = btn.dataset.gate;
     if (!gateName) return;
-
+    
     let shouldShow = true;
-
+    
     // Check search query
     if (searchQuery && !gateName.toLowerCase().includes(searchQuery.toLowerCase())) {
       shouldShow = false;
     }
-
+    
     // Check filters
     if (activeFilters.size > 0) {
       const category = gateCategories[gateName];
@@ -85,13 +121,12 @@ function updateGateVisibility() {
         shouldShow = false;
       }
     }
-
-    // Show or hide the button
+    
     btn.style.display = shouldShow ? 'block' : 'none';
   });
 }
 
-// ---------- Search functionality ----------
+// Search functionality
 const searchInput = document.getElementById('gateSearch');
 if (searchInput) {
   searchInput.addEventListener('input', (e) => {
@@ -100,26 +135,25 @@ if (searchInput) {
   });
 }
 
-// ---------- Filter functionality ----------
+// Filter functionality
 document.querySelectorAll('.filter-btn').forEach(filterBtn => {
   filterBtn.addEventListener('click', () => {
     const filter = filterBtn.dataset.filter;
-
     if (activeFilters.has(filter)) {
-      // Remove filter
       activeFilters.delete(filter);
       filterBtn.classList.remove('active');
     } else {
-      // Add filter
       activeFilters.add(filter);
       filterBtn.classList.add('active');
     }
-
     updateGateVisibility();
   });
 });
 
-// ---------- Gate library (selection + drag ghost) ----------
+// ========================================================================
+// GATE LIBRARY - SELECTION & DRAG
+// ========================================================================
+
 document.querySelectorAll('.gate-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     selectedGateType = btn.dataset.gate;
@@ -127,27 +161,35 @@ document.querySelectorAll('.gate-btn').forEach(btn => {
       .forEach(b => b.classList.remove('active-gate'));
     btn.classList.add('active-gate');
   });
-
+  
   btn.addEventListener('mousedown', e => {
     const gateName = btn.dataset.gate;
     if (!gateName) return;
+    
     dragging = true;
     dragGate = { name: gateName };
+    
     const rect = canvas.getBoundingClientRect();
     dragX = rect.width * 0.15;
     dragY = rect.height * 0.25;
+    
     drawCircuit();
     e.preventDefault();
   });
 });
 
-// ---------- Helpers ----------
+// ========================================================================
+// HELPER FUNCTIONS
+// ========================================================================
+
 function getCellFromCoords(x, y) {
   const t = Math.floor(x / cellW);
   const r = Math.floor(y / cellH);
+  
   if (t < 0 || t >= N_STEPS || r < 0 || r >= rows) {
     return { q: null, t: null };
   }
+  
   return { q: r, t };
 }
 
@@ -161,12 +203,11 @@ function gateCount() {
   return count;
 }
 
-// CNOT: control above, target below
 function getCnotQubits(dropQ) {
   const target = dropQ;
   const control = dropQ + 1 < N_QUBITS ? dropQ + 1 : dropQ;
   if (control === target) return null;
-  return [control, target]; // order not important; draw decides
+  return [control, target];
 }
 
 function arraysEqual(a, b) {
@@ -175,12 +216,11 @@ function arraysEqual(a, b) {
   return true;
 }
 
-// Place or toggle‑remove non‑measurement gate
 function placeGate(name, q, t) {
   if (q == null || t == null) return false;
   if (q < 0 || q >= N_QUBITS) return false;
   if (t === N_STEPS - 1 && name === 'M') return false;
-
+  
   let qubits;
   if (name === 'CNOT') {
     const pair = getCnotQubits(q);
@@ -189,10 +229,11 @@ function placeGate(name, q, t) {
   } else {
     qubits = [q];
   }
-
-  // same gate already here?
+  
+  // Check if same gate already exists (toggle delete)
   let existingGate = null;
   let fullyOccupied = true;
+  
   for (const qq of qubits) {
     const g = circuit[qq][t];
     if (!g) {
@@ -205,8 +246,8 @@ function placeGate(name, q, t) {
       break;
     }
   }
-
-  // toggle delete
+  
+  // Toggle delete
   if (fullyOccupied && existingGate && existingGate.name === name) {
     gateList = gateList.filter(
       g => !(g.t === t && arraysEqual(g.qubits, existingGate.qubits) && g.name === existingGate.name)
@@ -216,8 +257,8 @@ function placeGate(name, q, t) {
     }
     return true;
   }
-
-  // conflicting gate?
+  
+  // Check for conflicts
   for (const qq of qubits) {
     const g = circuit[qq][t];
     if (g && g !== existingGate) {
@@ -226,27 +267,33 @@ function placeGate(name, q, t) {
       return false;
     }
   }
-
-  // gate limit
+  
+  // Check gate limit
   if (!existingGate && gateCount() >= MAX_GATES) {
     const warn = document.getElementById('warning');
     if (warn) warn.textContent = `Gate limit reached (${MAX_GATES}).`;
     return false;
   }
-
+  
   const warn = document.getElementById('warning');
   if (warn) warn.textContent = '';
-
+  
   const gateObj = { name, qubits: qubits.slice(), t };
   gateList = gateList.filter(
     g => !(g.t === t && arraysEqual(g.qubits, gateObj.qubits) && g.name === gateObj.name)
   );
   gateList.push(gateObj);
+  
   for (const qq of qubits) {
     circuit[qq][t] = gateObj;
   }
+  
   return true;
 }
+
+// ========================================================================
+// CIRCUIT DRAWING
+// ========================================================================
 
 function drawCircuit() {
   ctx.clearRect(0, 0, W, H);
@@ -265,6 +312,7 @@ function drawCircuit() {
     ctx.moveTo(0, y);
     ctx.lineTo(W, y);
     ctx.stroke();
+    
     ctx.fillStyle = '#9ba0b5';
     if (r < N_QUBITS) ctx.fillText(`q[${r}]`, 4, y);
     else ctx.fillText(`c[${r}]`, 4, y);
@@ -279,7 +327,7 @@ function drawCircuit() {
     ctx.stroke();
   }
 
-  // 2. *** PHI MANIFOLD HEATMAP (LAYER 1) ***
+  // 2. PHI MANIFOLD HEATMAP (LAYER 1 - underneath everything)
   drawPhiManifoldSmooth();
 
   // 3. Draw user gates (LAYER 2 - on top of heatmap)
@@ -303,34 +351,34 @@ function drawCircuit() {
   if (dragging && dragGate) drawDraggingGate();
 }
 
-
 function drawGateGlyph(gate) {
   const { name, qubits, t } = gate;
   const pad = 4;
-
+  
   if (name === 'CNOT' && qubits.length === 2) {
     const qA = qubits[0];
     const qB = qubits[1];
-    const control = Math.max(qA, qB); // upper
-    const target = Math.min(qA, qB); // lower
+    const control = Math.max(qA, qB);
+    const target = Math.min(qA, qB);
+    
     const xCenter = t * cellW + cellW / 2;
     const yControl = control * cellH + cellH / 2;
     const yTarget = target * cellH + cellH / 2;
-
+    
     ctx.strokeStyle = '#e74c3c';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(xCenter, yTarget);
     ctx.lineTo(xCenter, yControl);
     ctx.stroke();
-
-    // control (filled) on top
+    
+    // Control dot (filled)
     ctx.fillStyle = '#e74c3c';
     ctx.beginPath();
     ctx.arc(xCenter, yControl, Math.min(cellH, cellW) * 0.18, 0, 2 * Math.PI);
     ctx.fill();
-
-    // target (⊕) below
+    
+    // Target (⊕)
     ctx.beginPath();
     ctx.arc(xCenter, yTarget, Math.min(cellH, cellW) * 0.18, 0, 2 * Math.PI);
     ctx.stroke();
@@ -342,17 +390,21 @@ function drawGateGlyph(gate) {
     ctx.stroke();
     return;
   }
-
-  // single‑qubit gate
+  
+  // Single-qubit gate
   const q = qubits[0];
   const x = t * cellW;
   const y = q * cellH;
+  
   ctx.strokeStyle = '#222';
   ctx.fillStyle = '#e74c3c';
+  
   const w = cellW - 2 * pad;
   const h = cellH - 2 * pad;
+  
   ctx.fillRect(x + pad, y + pad, w, h);
   ctx.strokeRect(x + pad, y + pad, w, h);
+  
   ctx.fillStyle = '#fff';
   ctx.font = '12px monospace';
   ctx.textAlign = 'center';
@@ -360,19 +412,21 @@ function drawGateGlyph(gate) {
   ctx.fillText(name, x + cellW / 2, y + cellH / 2);
 }
 
-// fixed blue M gates at last column (visual only)
 function drawMeasurements() {
   const t = N_STEPS - 1;
   const pad = 4;
+  
   for (let q = 0; q < N_QUBITS; q++) {
     const x = t * cellW;
     const y = q * cellH;
     const w = cellW - 2 * pad;
     const h = cellH - 2 * pad;
+    
     ctx.strokeStyle = '#222';
     ctx.fillStyle = '#2980b9';
     ctx.fillRect(x + pad, y + pad, w, h);
     ctx.strokeRect(x + pad, y + pad, w, h);
+    
     ctx.fillStyle = '#fff';
     ctx.font = '12px monospace';
     ctx.textAlign = 'center';
@@ -384,17 +438,21 @@ function drawMeasurements() {
 function drawDraggingGate() {
   const pad = 4;
   const { q, t } = getCellFromCoords(dragX, dragY);
+  
   if (q !== null && t !== null && q < N_QUBITS && t !== N_STEPS - 1) {
     const x = t * cellW, y = q * cellH;
     ctx.fillStyle = 'rgba(231, 126, 35, 0.3)';
     ctx.fillRect(x + 1, y + 1, cellW - 2, cellH - 2);
   }
+  
   const w = cellW - 2 * pad;
   const h = cellH - 2 * pad;
+  
   ctx.fillStyle = '#e74c3c';
   ctx.fillRect(dragX - w / 2, dragY - h / 2, w, h);
   ctx.strokeStyle = '#222';
   ctx.strokeRect(dragX - w / 2, dragY - h / 2, w, h);
+  
   ctx.fillStyle = '#fff';
   ctx.font = '12px monospace';
   ctx.textAlign = 'center';
@@ -402,69 +460,115 @@ function drawDraggingGate() {
   ctx.fillText(dragGate.name, dragX, dragY);
 }
 
-// ---------- Drag events ----------
+// ========================================================================
+// DRAG EVENTS
+// ========================================================================
+
 window.addEventListener('mousemove', e => {
   if (!dragging || !dragGate) return;
+  
   const rect = canvas.getBoundingClientRect();
   dragX = e.clientX - rect.left;
   dragY = e.clientY - rect.top;
+  
   drawCircuit();
 });
 
 window.addEventListener('mouseup', e => {
   if (!dragging || !dragGate) return;
+  
   dragging = false;
   const rect = canvas.getBoundingClientRect();
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
   const { q, t } = getCellFromCoords(x, y);
+  
   if (q !== null && t !== null && q < N_QUBITS && t !== N_STEPS - 1) {
     placeGate(dragGate.name, q, t);
   }
+  
   dragGate = null;
   drawCircuit();
 });
 
-// click to delete existing gate (not M)
 canvas.addEventListener('click', e => {
   if (dragging || dragGate) return;
+  
   const rect = canvas.getBoundingClientRect();
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
   const { q, t } = getCellFromCoords(x, y);
+  
   if (q == null || t == null || q >= N_QUBITS) return;
   if (t === N_STEPS - 1) return;
+  
   const g = circuit[q][t];
   if (!g) return;
-
-  // FIX: Use the clicked qubit position 'q' instead of g.qubits[0]
-  // This ensures CNOT gates delete correctly no matter which part is clicked
+  
   placeGate(g.name, q, g.t);
   drawCircuit();
 });
 
-// ---------- Histogram Drawing ----------
-let histogramData = null; // Will store { ideal: {...}, noisy: {...} }
+// ========================================================================
+// HISTOGRAM DRAWING
+// ========================================================================
+
+let histogramData = null;
+
+function syncHistogramCanvas() {
+  const histCanvas = document.getElementById('histCanvas');
+  if (!histCanvas) return;
+  
+  const container = document.getElementById('bottom-left');
+  if (!container) return;
+  
+  const rect = container.getBoundingClientRect();
+  
+  // CSS dimensions
+  const displayWidth = rect.width - 16;
+  const displayHeight = rect.height - 40;
+  
+  // Device pixel ratio
+  const dpr = window.devicePixelRatio || 1;
+  
+  // Set canvas resolution
+  histCanvas.width = displayWidth * dpr;
+  histCanvas.height = displayHeight * dpr;
+  
+  // Set CSS size
+  histCanvas.style.width = displayWidth + 'px';
+  histCanvas.style.height = displayHeight + 'px';
+  
+  // Scale context
+  const histCtx = histCanvas.getContext('2d');
+  histCtx.scale(dpr, dpr);
+  
+  console.log(`📊 Histogram canvas: ${histCanvas.width}×${histCanvas.height} (${dpr}x DPR)`);
+  
+  drawHistogram();
+}
 
 function drawHistogram() {
   const histCanvas = document.getElementById('histCanvas');
   if (!histCanvas) return;
-
+  
   const ctx = histCanvas.getContext('2d');
-  const w = histCanvas.width;
-  const h = histCanvas.height;
-
+  
+  // Use logical dimensions (CSS size)
+  const w = parseInt(histCanvas.style.width) || (histCanvas.width / (window.devicePixelRatio || 1));
+  const h = parseInt(histCanvas.style.height) || (histCanvas.height / (window.devicePixelRatio || 1));
+  
   // Clear canvas
   ctx.clearRect(0, 0, w, h);
   ctx.fillStyle = '#10131b';
   ctx.fillRect(0, 0, w, h);
 
   // Define margins and plotting area
-  const margin = { left: 60, right: 20, top: 40, bottom: 60 };
+  const margin = { left: 60, right: 20, top: 40, bottom: 100 };
   const plotWidth = w - margin.left - margin.right;
   const plotHeight = h - margin.top - margin.bottom;
 
-  // Generate state labels for N_QUBITS
+  // Generate state labels
   const numStates = Math.pow(2, N_QUBITS);
   const stateLabels = [];
   for (let i = 0; i < numStates; i++) {
@@ -480,7 +584,7 @@ function drawHistogram() {
   ctx.lineTo(margin.left + plotWidth, margin.top + plotHeight);
   ctx.stroke();
 
-  // Y-axis labels (0 to 1)
+  // Y-axis labels
   ctx.fillStyle = '#9ba0b5';
   ctx.font = '11px monospace';
   ctx.textAlign = 'right';
@@ -510,7 +614,7 @@ function drawHistogram() {
   ctx.fillText('Probability', 0, 0);
   ctx.restore();
 
-  // X-axis labels (states)
+  // X-axis labels
   ctx.fillStyle = '#9ba0b5';
   ctx.font = '10px monospace';
   ctx.textAlign = 'center';
@@ -533,7 +637,6 @@ function drawHistogram() {
   const legendX = margin.left + 10;
   const legendY = margin.top + 10;
 
-  // Ideal (Blue)
   ctx.fillStyle = '#3498db';
   ctx.fillRect(legendX, legendY, 15, 10);
   ctx.fillStyle = '#e0e3ff';
@@ -541,13 +644,12 @@ function drawHistogram() {
   ctx.textAlign = 'left';
   ctx.fillText('Ideal', legendX + 20, legendY + 9);
 
-  // Noisy (Orange)
   ctx.fillStyle = '#e67e22';
   ctx.fillRect(legendX + 80, legendY, 15, 10);
   ctx.fillStyle = '#e0e3ff';
   ctx.fillText('Noisy', legendX + 100, legendY + 9);
 
-  // Draw bars if data exists
+  // Draw bars
   if (histogramData) {
     const { ideal, noisy } = histogramData;
     const barPadding = 2;
@@ -558,10 +660,9 @@ function drawHistogram() {
       const state = i.toString(2).padStart(N_QUBITS, '0');
       const idealProb = ideal[state] || 0;
       const noisyProb = noisy[state] || 0;
-
       const baseX = margin.left + i * barWidth;
 
-      // Ideal bar (blue)
+      // Ideal bar
       if (idealProb > 0) {
         const barHeight = idealProb * plotHeight;
         ctx.fillStyle = '#3498db';
@@ -573,7 +674,7 @@ function drawHistogram() {
         );
       }
 
-      // Noisy bar (orange)
+      // Noisy bar
       if (noisyProb > 0) {
         const barHeight = noisyProb * plotHeight;
         ctx.fillStyle = '#e67e22';
@@ -588,32 +689,18 @@ function drawHistogram() {
   }
 }
 
-// Sync histogram canvas geometry
-function syncHistogramCanvas() {
-  const histCanvas = document.getElementById('histCanvas');
-  if (!histCanvas) return;
-
-  const container = document.getElementById('bottom-left');
-  if (!container) return;
-
-  const rect = container.getBoundingClientRect();
-  histCanvas.width = rect.width - 16; // Account for padding
-  histCanvas.height = rect.height - 40; // Account for title and padding
-
-  drawHistogram();
-}
 // ========================================================================
 // PHI MANIFOLD HEATMAP - Smooth Bilinear Interpolation
 // ========================================================================
 
 function drawPhiManifoldSmooth() {
   if (!window.lastPhiManifold || !document.getElementById('inspectToggle').checked) {
-    return; // Only draw if phi data exists and inspect is enabled
+    return;
   }
 
   const phiData = window.lastPhiManifold;
   
-  // ---------- Normalize phi values ----------
+  // Normalize phi values
   let minPhi = Infinity, maxPhi = -Infinity;
   for (const qubitData of phiData) {
     for (const val of qubitData) {
@@ -623,72 +710,59 @@ function drawPhiManifoldSmooth() {
   }
   
   const range = maxPhi - minPhi;
-  if (range === 0) return; // No variation
+  if (range === 0) return;
 
-  // ---------- Interpolation Helpers ----------
+  // Interpolation helpers
   function getPhi(q, t) {
-    // Clamp to valid indices
     q = Math.max(0, Math.min(N_QUBITS - 1, Math.floor(q)));
     t = Math.max(0, Math.min(phiData[0].length - 1, Math.floor(t)));
     return phiData[q][t];
   }
 
   function bilinearInterp(qCont, tCont) {
-    // qCont and tCont are continuous coordinates (can be fractional)
     const q0 = Math.floor(qCont);
     const q1 = Math.min(q0 + 1, N_QUBITS - 1);
     const t0 = Math.floor(tCont);
     const t1 = Math.min(t0 + 1, phiData[0].length - 1);
     
-    const fq = qCont - q0; // fractional part (0 to 1)
+    const fq = qCont - q0;
     const ft = tCont - t0;
     
-    // Get 4 corner values
     const v00 = getPhi(q0, t0);
     const v10 = getPhi(q1, t0);
     const v01 = getPhi(q0, t1);
     const v11 = getPhi(q1, t1);
     
-    // Bilinear interpolation formula
     const v0 = v00 * (1 - ft) + v01 * ft;
     const v1 = v10 * (1 - ft) + v11 * ft;
-    const v = v0 * (1 - fq) + v1 * fq;
-    
-    return v;
+    return v0 * (1 - fq) + v1 * fq;
   }
 
-  // ---------- Draw Smooth Heatmap ----------
-  const subsamples = 8; // Samples per cell edge for smooth gradients
+  // Draw smooth heatmap
+  const subsamples = 8;
   
   for (let q = 0; q < N_QUBITS; q++) {
     for (let t = 0; t < N_STEPS; t++) {
       const x = t * cellW;
       const y = q * cellH;
-      const w = cellW - 4; // Padding
+      const w = cellW - 4;
       const h = cellH - 4;
       
-      // Create ImageData for this cell at high resolution
       const cellCanvas = document.createElement('canvas');
       cellCanvas.width = subsamples;
       cellCanvas.height = subsamples;
       const cellCtx = cellCanvas.getContext('2d');
       const imageData = cellCtx.createImageData(subsamples, subsamples);
       
-      // Sample phi at each sub-pixel
       for (let py = 0; py < subsamples; py++) {
         for (let px = 0; px < subsamples; px++) {
-          // Map pixel to continuous coordinates
           const qSample = q + (py / subsamples);
           const tSample = t + (px / subsamples);
           
-          // Interpolate phi value
           const phi = bilinearInterp(qSample, tSample);
           const normalized = (phi - minPhi) / range;
-          
-          // Get RGBA color
           const rgba = getPhiColorRGBA(normalized);
           
-          // Set pixel
           const idx = (py * subsamples + px) * 4;
           imageData.data[idx + 0] = rgba.r;
           imageData.data[idx + 1] = rgba.g;
@@ -697,10 +771,7 @@ function drawPhiManifoldSmooth() {
         }
       }
       
-      // Put ImageData to offscreen canvas
       cellCtx.putImageData(imageData, 0, 0);
-      
-      // Draw smoothed cell to main canvas
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(cellCanvas, x + 2, y + 2, w, h);
@@ -708,38 +779,28 @@ function drawPhiManifoldSmooth() {
   }
 }
 
-// Color gradient: Blue → Purple → Red (returns RGBA object)
 function getPhiColorRGBA(normalized) {
   normalized = Math.max(0, Math.min(1, normalized));
   
   let r, g, b, a;
   
   if (normalized < 0.5) {
-    // Blue to Purple (0.0 → 0.5)
     const t = normalized * 2;
-    r = Math.floor(52 + t * (148 - 52));    // #3498db to #940085
+    r = Math.floor(52 + t * (148 - 52));
     g = Math.floor(152 - t * 152);
     b = Math.floor(219 + t * (133 - 219));
-    a = Math.floor((0.3 + t * 0.2) * 255);  // 30% to 50% opacity
+    a = Math.floor((0.3 + t * 0.2) * 255);
   } else {
-    // Purple to Red (0.5 → 1.0)
     const t = (normalized - 0.5) * 2;
-    r = Math.floor(148 + t * (231 - 148));  // #940085 to #e74c3c
+    r = Math.floor(148 + t * (231 - 148));
     g = 0;
     b = Math.floor(133 - t * 133);
-    a = Math.floor((0.5 + t * 0.3) * 255);  // 50% to 80% opacity
+    a = Math.floor((0.5 + t * 0.3) * 255);
   }
   
   return { r, g, b, a };
 }
 
-// Original string version for legend
-function getPhiColor(normalized) {
-  const rgba = getPhiColorRGBA(normalized);
-  return `rgba(${rgba.r}, ${rgba.g}, ${rgba.b}, ${rgba.a / 255})`;
-}
-
-// ---------- Phi Legend ----------
 function drawPhiLegend() {
   if (!window.lastPhiManifold || !document.getElementById('inspectToggle').checked) {
     return;
@@ -750,21 +811,18 @@ function drawPhiLegend() {
   const legendWidth = 100;
   const legendHeight = 15;
 
-  // Draw gradient bar
   const gradient = ctx.createLinearGradient(legendX, 0, legendX + legendWidth, 0);
-  gradient.addColorStop(0, 'rgba(52, 152, 219, 0.4)');   // Blue
-  gradient.addColorStop(0.5, 'rgba(148, 0, 133, 0.6)');  // Purple
-  gradient.addColorStop(1, 'rgba(231, 76, 60, 0.8)');    // Red
+  gradient.addColorStop(0, 'rgba(52, 152, 219, 0.4)');
+  gradient.addColorStop(0.5, 'rgba(148, 0, 133, 0.6)');
+  gradient.addColorStop(1, 'rgba(231, 76, 60, 0.8)');
 
   ctx.fillStyle = gradient;
   ctx.fillRect(legendX, legendY, legendWidth, legendHeight);
 
-  // Border
   ctx.strokeStyle = '#9ba0b5';
   ctx.lineWidth = 1;
   ctx.strokeRect(legendX, legendY, legendWidth, legendHeight);
 
-  // Labels
   ctx.fillStyle = '#e0e3ff';
   ctx.font = '9px monospace';
   ctx.textAlign = 'center';
@@ -773,29 +831,26 @@ function drawPhiLegend() {
   ctx.fillText('High', legendX + legendWidth - 15, legendY + legendHeight + 10);
 }
 
-// Initialize histogram canvas
-window.addEventListener('load', () => {
-  syncHistogramCanvas();
-});
-// ---------- Run circuit: include Ms logically ----------
-document.getElementById('runBtn').addEventListener('click', async () => {
-  const noise      = document.getElementById('noiseToggle').checked;
-  const inspect     = document.getElementById('inspectToggle').checked;
-  const persistent = document.getElementById('persistToggle').checked;
-  const shots      = 1024;
+// ========================================================================
+// BACKEND INTEGRATION
+// ========================================================================
 
-  // Sort gates: by time, then by first qubit
+document.getElementById('runBtn').addEventListener('click', async () => {
+  const noise = document.getElementById('noiseToggle').checked;
+  const inspect = document.getElementById('inspectToggle').checked;
+  const persistent = document.getElementById('persistToggle').checked;
+  const shots = 1024;
+
   const payloadGates = gateList
     .slice()
     .sort((a, b) => a.t - b.t || a.qubits[0] - b.qubits[0]);
 
-  // Append measurements at final time step
   const measT = N_STEPS - 1;
   for (let q = 0; q < N_QUBITS; q++) {
     payloadGates.push({
-      name:  'M',
+      name: 'M',
       qubits: [q],
-      t:     measT
+      t: measT
     });
   }
 
@@ -810,7 +865,6 @@ document.getElementById('runBtn').addEventListener('click', async () => {
 
   console.log('📤 Sending to backend:', body);
 
-  // --- BACKEND CALL ---
   try {
     const response = await fetch('http://localhost:8000/simulate', {
       method: 'POST',
@@ -825,40 +879,37 @@ document.getElementById('runBtn').addEventListener('click', async () => {
     const result = await response.json();
     console.log('✅ Backend response:', result);
 
-    // --- UPDATE HISTOGRAM ---
+    // Update histogram
     histogramData = {
       ideal: result.histogram_ideal,
       noisy: result.histogram_noisy || {}
     };
     drawHistogram();
 
-    // --- UPDATE BLOCH SPHERES ---
+    // Update Bloch spheres
     if (typeof updateBlochSpheres !== 'undefined' && blochInitialized) {
-    const blochStates = result.bloch_states.map(state => ({
+      const blochStates = result.bloch_states.map(state => ({
         theta: state.theta,
         phi: state.phi,
         probability: state.probability,
-        label: state.state  // "0000", "1000"
-    }));
-    updateBlochSpheres(blochStates);
-    
-    // Update legend to show which states are displayed
-    if (typeof updateLegend !== 'undefined') {
+        label: state.state
+      }));
+      updateBlochSpheres(blochStates);
+      
+      if (typeof updateLegend !== 'undefined') {
         updateLegend();
-    }
+      }
     }
 
-
-    // --- UPDATE METADATA BOX ---
+    // Update metadata box
     const metaBox = document.getElementById('metaBox');
-if (metaBox) {
-  const meta = result.metadata;
-  const timing = meta.timing;
-  const cache = meta.cache_stats || {};  // ← Safe default
-  const lru = cache.lru_cache || { hits: 0, misses: 0, hit_rate: 0, current_size: 0, max_size: 0 };
-  
-  metaBox.value = `
+    if (metaBox) {
+      const meta = result.metadata;
+      const timing = meta.timing;
+      const cache = meta.cache_stats || {};
+      const lru = cache.lru_cache || { hits: 0, misses: 0, hit_rate: 0, current_size: 0, max_size: 0 };
 
+      metaBox.value = `
 CIRCUIT INFO
 ├─ Qubits:        ${N_QUBITS}
 ├─ Circuit Depth: ${meta.circuit_depth}
@@ -894,13 +945,9 @@ NOISE ANALYSIS
 Ideal vs Noisy Fidelity: ${calculateFidelity(histogramData.ideal, histogramData.noisy).toFixed(3)}
 ` : ''}
 `.trim();
-}
+    }
 
-
-    // --- STORE PHI MANIFOLD (handle later) ---
     window.lastPhiManifold = result.phi_manifold;
-    
-    // Redraw circuit with updated state
     drawCircuit();
 
     console.log('✨ UI updated successfully');
@@ -916,7 +963,6 @@ Ideal vs Noisy Fidelity: ${calculateFidelity(histogramData.ideal, histogramData.
   }
 });
 
-// --- HELPER: Calculate Fidelity ---
 function calculateFidelity(ideal, noisy) {
   let fidelity = 0;
   for (const state in ideal) {
@@ -927,5 +973,14 @@ function calculateFidelity(ideal, noisy) {
   return fidelity;
 }
 
-// ---------- Init ----------
+// ========================================================================
+// INITIALIZATION
+// ========================================================================
+
+window.addEventListener('load', () => {
+  syncHistogramCanvas();
+});
+
 drawCircuit();
+
+console.log('✅ QtorchX Circuit Simulator loaded');
