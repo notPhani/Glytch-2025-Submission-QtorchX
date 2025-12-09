@@ -1,0 +1,507 @@
+/* ========================================
+   QUANTUM THEME LANDING PAGE - RUSHGRID STYLE
+   ======================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --q-cyan: #0ea5e9;
+  --q-blue: #0ea5e9;
+  --q-cyan-light: #06b6d4;
+  --q-dark-bg: #0a0a0a;
+  --q-dark-surface: #111111;
+  --q-border: rgba(14, 165, 233, 0.15);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* ========================================
+   BASE STYLES
+   ======================================== */
+
+.landing-container {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  background: #0a0a0a;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #e5e7eb;
+}
+
+/* ========================================
+   PARTICLE SYSTEM
+   ======================================== */
+
+.q-dots-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.q-dot {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.3;
+  will-change: transform;
+  box-shadow: 0 0 20px currentColor, 0 0 40px currentColor;
+}
+
+/* Smooth Hovering Animation */
+@keyframes q-float {
+  0% {
+    transform: translateY(0) translateX(0) scale(1);
+    opacity: 0.3;
+  }
+  25% {
+    transform: translateY(-15px) translateX(20px) scale(0.95);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(-5px) translateX(-15px) scale(1);
+    opacity: 0.45;
+  }
+  75% {
+    transform: translateY(10px) translateX(10px) scale(0.95);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateY(0) translateX(0) scale(1);
+    opacity: 0.3;
+  }
+}
+
+/* ========================================
+   CONTENT WRAPPER
+   ======================================== */
+
+.landing-content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 1100px;
+  padding: 80px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 100px;
+  text-align: center;
+}
+
+/* ========================================
+   HERO SECTION
+   ======================================== */
+
+.hero-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 25px;
+  min-height: 60vh;
+  padding: 40px 20px;
+}
+
+.hero-title {
+  font-size: clamp(3.5rem, 10vw, 5.5rem);
+  font-weight: 900;
+  letter-spacing: -1px;
+  margin: 0;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.hero-title-icon {
+  color: #0ea5e9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: spin 8s linear infinite;
+}
+
+.hero-title-icon svg {
+  width: 70px;
+  height: 70px;
+  filter: drop-shadow(0 0 15px rgba(14, 165, 233, 0.6));
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.hero-subtitle {
+  font-size: 0.95rem;
+  color: rgba(229, 231, 235, 0.7);
+  max-width: 700px;
+  margin: 0;
+  font-weight: 400;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  line-height: 1.6;
+}
+
+.hero-description {
+  font-size: 1.1rem;
+  color: rgba(229, 231, 235, 0.8);
+  max-width: 750px;
+  margin: 0;
+  font-weight: 300;
+  letter-spacing: 0.3px;
+  line-height: 1.8;
+}
+
+.highlight-cyan {
+  color: #0ea5e9;
+  font-weight: 500;
+}
+
+.hero-cta {
+  margin-top: 20px;
+}
+
+/* ========================================
+   CTA BUTTON - QUANTUM PUNCH
+   ======================================== */
+
+.q-btn-quantum {
+  padding: 18px 50px;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  background: linear-gradient(135deg, #0ea5e9 0%, #0891b2 100%);
+  color: #ffffff;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  box-shadow: 0 10px 30px rgba(14, 165, 233, 0.3);
+}
+
+.q-btn-quantum:hover {
+  background: linear-gradient(135deg, #0891b2 0%, #0d9488 100%);
+  box-shadow: 0 15px 40px rgba(14, 165, 233, 0.5);
+  transform: translateY(-2px);
+}
+
+.q-btn-quantum:active {
+  animation: q-punch 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes q-punch {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Pulse animation */
+@keyframes q-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(34, 211, 238, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(34, 211, 238, 0.8);
+  }
+}
+
+/* ========================================
+   FEATURES SECTION
+   ======================================== */
+
+.features-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 35px;
+  padding: 0 20px;
+  margin-bottom: 40px;
+}
+
+/* ========================================
+   GLASS MORPHISM CARDS
+   ======================================== */
+
+.q-glass-card {
+  padding: 40px 30px;
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  background: rgba(17, 24, 39, 0.5);
+  border: 1px solid rgba(14, 165, 233, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.q-glass-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, transparent 70%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+.q-glass-card:hover {
+  background: rgba(17, 24, 39, 0.8);
+  border-color: rgba(14, 165, 233, 0.4);
+  box-shadow: 0 20px 50px rgba(14, 165, 233, 0.15);
+}
+
+.q-glass-card:hover::before {
+  opacity: 0.8;
+}
+
+.q-glass-card h3 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.3px;
+  color: #ffffff;
+}
+
+.q-glass-card p {
+  font-size: 0.95rem;
+  color: rgba(229, 231, 235, 0.65);
+  line-height: 1.6;
+  margin: 0;
+  font-weight: 300;
+}
+
+.card-icon {
+  font-size: 2.5rem;
+  margin: 0;
+  color: currentColor;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+}
+
+.card-icon svg {
+  width: 100%;
+  height: 100%;
+  stroke: currentColor;
+  color: inherit;
+}
+
+/* ========================================
+   ACCENT BOX COLORS
+   ======================================== */
+
+/* Cyan Box */
+.q-box-cyan {
+  border-color: rgba(14, 165, 233, 0.25);
+}
+
+.q-box-cyan .card-icon {
+  color: #0ea5e9;
+}
+
+.q-box-cyan::before {
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.2) 0%, transparent 70%);
+}
+
+.q-box-cyan:hover {
+  border-color: rgba(14, 165, 233, 0.5);
+  box-shadow: 0 20px 50px rgba(14, 165, 233, 0.2);
+  background: rgba(14, 165, 233, 0.05);
+}
+
+/* Blue Box */
+.q-box-blue {
+  border-color: rgba(6, 182, 212, 0.25);
+}
+
+.q-box-blue .card-icon {
+  color: #06b6d4;
+}
+
+.q-box-blue::before {
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.2) 0%, transparent 70%);
+}
+
+.q-box-blue:hover {
+  border-color: rgba(6, 182, 212, 0.5);
+  box-shadow: 0 20px 50px rgba(6, 182, 212, 0.2);
+  background: rgba(6, 182, 212, 0.05);
+}
+
+/* Cyan Light Box */
+.q-box-cyan-light {
+  border-color: rgba(34, 211, 238, 0.25);
+}
+
+.q-box-cyan-light .card-icon {
+  color: #22d3ee;
+}
+
+.q-box-cyan-light::before {
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.2) 0%, transparent 70%);
+}
+
+.q-box-cyan-light:hover {
+  border-color: rgba(34, 211, 238, 0.5);
+  box-shadow: 0 20px 50px rgba(34, 211, 238, 0.2);
+  background: rgba(34, 211, 238, 0.05);
+}
+
+/* ========================================
+   CTA TEXT
+   ======================================== */
+
+.cta-text {
+  font-size: 0.9rem;
+  color: rgba(229, 231, 235, 0.5);
+  letter-spacing: 0.5px;
+  margin: 0;
+  font-weight: 300;
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+@media (max-width: 768px) {
+  .landing-content {
+    padding: 60px 30px;
+    gap: 70px;
+  }
+
+  .hero-title {
+    font-size: clamp(2.5rem, 8vw, 4rem);
+  }
+
+  .hero-subtitle {
+    font-size: 0.9rem;
+  }
+
+  .hero-description {
+    font-size: 1rem;
+  }
+
+  .features-section {
+    grid-template-columns: 1fr;
+    gap: 25px;
+    padding: 0;
+  }
+
+  .q-glass-card {
+    padding: 35px 25px;
+  }
+
+  .q-btn-quantum {
+    padding: 16px 40px;
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .landing-container {
+    min-height: auto;
+  }
+
+  .landing-content {
+    padding: 40px 20px;
+    gap: 50px;
+  }
+
+  .hero-section {
+    padding: 20px 0;
+  }
+
+  .hero-title {
+    font-size: 2.2rem;
+  }
+
+  .hero-subtitle {
+    font-size: 0.85rem;
+  }
+
+  .hero-description {
+    font-size: 0.95rem;
+  }
+
+  .features-section {
+    gap: 20px;
+    padding: 0;
+  }
+
+  .q-glass-card {
+    padding: 25px 20px;
+  }
+
+  .card-icon {
+    font-size: 2rem;
+  }
+
+  .q-glass-card h3 {
+    font-size: 1.1rem;
+  }
+
+  .q-glass-card p {
+    font-size: 0.9rem;
+  }
+
+  .q-btn-quantum {
+    padding: 14px 30px;
+    font-size: 0.9rem;
+  }
+}
+
+/* ========================================
+   ACCESSIBILITY
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .q-dot,
+  .hero-title,
+  .q-btn-quantum,
+  .q-glass-card {
+    animation: none;
+    transition: none;
+  }
+}
