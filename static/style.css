@@ -90,9 +90,10 @@ body {
 /* Left: operations */
 
 #left-panel {
-  padding: 8px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
+  overlay: hidden;
 }
 
 .panel-title {
@@ -106,13 +107,55 @@ body {
   margin-left: 8px;
 }
 
-/* Gate library */
+/* Search + filters in Operations */
+
+#gate-search-bar {
+  margin-top: 6px;
+}
+
+#gateSearch {
+  width: 100%;
+  padding: 4px 6px;
+  font-size: 12px;
+  border-radius: 3px;
+  border: 1px solid #3a4154;
+  background: #10131b;
+  color: #eaefff;
+}
+
+#gate-filters {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.filter-btn {
+  flex: 1 1 auto;
+  padding: 3px 4px;
+  font-size: 11px;
+  border-radius: 3px;
+  border: 1px solid #3a4154;
+  background: #1f2534;
+  color: #d0d4e6;
+  cursor: pointer;
+}
+
+.filter-btn.active {
+  background: #0b84ff;
+  border-color: #0b84ff;
+  color: #fff;
+}
+
+/* Gate library - scrollable */
 
 #gate-library {
+  margin-top: 8px;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 4px;
-  margin-top: 8px;
+  max-height: 190px;
+  overflow-y: auto;
 }
 
 .gate-btn {
@@ -198,8 +241,7 @@ body {
 }
 
 #circuit-inner {
-  /* remove: flex: 1 1 auto; */
-  height: 250px;                 /* tweak 200–260px to taste */
+  height: 265px;
   border: 1px solid #2b2f3a;
   background: #10131b;
   padding: 4px;

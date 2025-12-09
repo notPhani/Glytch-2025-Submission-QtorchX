@@ -4,7 +4,7 @@ const HAS_CLASSICAL = true;
 const N_STEPS = 15;
 const MAX_GATES = 15;
 
-// circuit[q][t] = user gate | null  (M is visual only; added to payload on run)
+// circuit[q][t] = user gate | null (M is visual only; added to payload on run)
 const circuit = Array.from({ length: N_QUBITS }, () =>
   Array.from({ length: N_STEPS }, () => null)
 );
@@ -19,11 +19,9 @@ let W, H, cellW, cellH;
 function syncGeometry() {
   const container = document.getElementById('circuit-inner');
   const rect = container.getBoundingClientRect();
-
   const padding = 4; // matches #circuit-inner padding
-  canvas.width  = rect.width  - 2 * padding;
+  canvas.width = rect.width - 2 * padding;
   canvas.height = rect.height - 2* padding;
-
   W = canvas.width;
   H = canvas.height;
   cellW = W / N_STEPS;
@@ -39,11 +37,87 @@ window.addEventListener('resize', () => {
 // Drag state
 let selectedGateType = null;
 let dragging = false;
-let dragGate = null;   // { name }
+let dragGate = null; // { name }
 let dragX = 0, dragY = 0;
 
-// ---------- Gate library (selection + drag ghost) ----------
+// ---------- Gate filtering state ----------
+let activeFilters = new Set(); // e.g., 'basic', 'rotation', 'multi'
+let searchQuery = '';
 
+// Gate categories mapping
+const gateCategories = {
+  'H': 'basic',
+  'X': 'basic',
+  'Y': 'basic',
+  'Z': 'basic',
+  'I': 'basic',
+  'S': 'rotation',
+  'T': 'rotation',
+  'Rx': 'rotation',
+  'Ry': 'rotation',
+  'Rz': 'rotation',
+  'CNOT': 'multi',
+  'SWAP': 'multi',
+  'CZ': 'multi'
+};
+
+// Filter gate buttons based on active filters and search
+function updateGateVisibility() {
+  const gateButtons = document.querySelectorAll('.gate-btn');
+
+  gateButtons.forEach(btn => {
+    const gateName = btn.dataset.gate;
+    if (!gateName) return;
+
+    let shouldShow = true;
+
+    // Check search query
+    if (searchQuery && !gateName.toLowerCase().includes(searchQuery.toLowerCase())) {
+      shouldShow = false;
+    }
+
+    // Check filters
+    if (activeFilters.size > 0) {
+      const category = gateCategories[gateName];
+      if (!category || !activeFilters.has(category)) {
+        shouldShow = false;
+      }
+    }
+
+    // Show or hide the button
+    btn.style.display = shouldShow ? 'block' : 'none';
+  });
+}
+
+// ---------- Search functionality ----------
+const searchInput = document.getElementById('gateSearch');
+if (searchInput) {
+  searchInput.addEventListener('input', (e) => {
+    searchQuery = e.target.value.trim();
+    updateGateVisibility();
+  });
+}
+
+// ---------- Filter functionality ----------
+document.querySelectorAll('.filter-btn').forEach(filterBtn => {
+  filterBtn.addEventListener('click', () => {
+    const filter = filterBtn.dataset.filter;
+
+    if (activeFilters.has(filter)) {
+      // Remove filter
+      activeFilters.delete(filter);
+      filterBtn.classList.remove('active');
+    } else {
+      // Add filter
+      activeFilters.add(filter);
+      filterBtn.classList.add('active');
+    }
+
+    updateGateVisibility();
+  });
+});
+
+// ---------- Gate library (selection + drag ghost) ----------
 document.querySelectorAll('.gate-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     selectedGateType = btn.dataset.gate;
@@ -57,7 +131,6 @@ document.querySelectorAll('.gate-btn').forEach(btn => {
     if (!gateName) return;
     dragging = true;
     dragGate = { name: gateName };
-
     const rect = canvas.getBoundingClientRect();
     dragX = rect.width * 0.15;
     dragY = rect.height * 0.25;
@@ -67,7 +140,6 @@ document.querySelectorAll('.gate-btn').forEach(btn => {
 });
 
 // ---------- Helpers ----------
-
 function getCellFromCoords(x, y) {
   const t = Math.floor(x / cellW);
   const r = Math.floor(y / cellH);
@@ -159,6 +231,7 @@ function placeGate(name, q, t) {
     if (warn) warn.textContent = `Gate limit reached (${MAX_GATES}).`;
     return false;
   }
+
   const warn = document.getElementById('warning');
   if (warn) warn.textContent = '';
 
@@ -167,7 +240,6 @@ function placeGate(name, q, t) {
     g => !(g.t === t && arraysEqual(g.qubits, gateObj.qubits) && g.name === gateObj.name)
   );
   gateList.push(gateObj);
-
   for (const qq of qubits) {
     circuit[qq][t] = gateObj;
   }
@@ -175,12 +247,10 @@ function placeGate(name, q, t) {
 }
 
 // ---------- Drawing ----------
-
 function drawCircuit() {
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#10131b';
   ctx.fillRect(0, 0, W, H);
-
   ctx.font = '12px monospace';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
@@ -188,13 +258,11 @@ function drawCircuit() {
   // horizontal lines + labels
   for (let r = 0; r < rows; r++) {
     const y = (r + 0.5) * cellH;
-
     ctx.strokeStyle = '#333';
     ctx.beginPath();
     ctx.moveTo(0, y);
     ctx.lineTo(W, y);
     ctx.stroke();
-
     ctx.fillStyle = '#9ba0b5';
     if (r < N_QUBITS) ctx.fillText(`q[${r}]`, 4, y);
     else ctx.fillText(`c[${r}]`, 4, y);
@@ -239,11 +307,10 @@ function drawGateGlyph(gate) {
     const qA = qubits[0];
     const qB = qubits[1];
     const control = Math.max(qA, qB); // upper
-    const target  = Math.min(qA, qB); // lower
-
+    const target = Math.min(qA, qB); // lower
     const xCenter = t * cellW + cellW / 2;
     const yControl = control * cellH + cellH / 2;
-    const yTarget  = target  * cellH + cellH / 2;
+    const yTarget = target * cellH + cellH / 2;
 
     ctx.strokeStyle = '#e74c3c';
     ctx.lineWidth = 2;
@@ -275,15 +342,12 @@ function drawGateGlyph(gate) {
   const q = qubits[0];
   const x = t * cellW;
   const y = q * cellH;
-
   ctx.strokeStyle = '#222';
   ctx.fillStyle = '#e74c3c';
-
   const w = cellW - 2 * pad;
   const h = cellH - 2 * pad;
   ctx.fillRect(x + pad, y + pad, w, h);
   ctx.strokeRect(x + pad, y + pad, w, h);
-
   ctx.fillStyle = '#fff';
   ctx.font = '12px monospace';
   ctx.textAlign = 'center';
@@ -300,12 +364,10 @@ function drawMeasurements() {
     const y = q * cellH;
     const w = cellW - 2 * pad;
     const h = cellH - 2 * pad;
-
     ctx.strokeStyle = '#222';
     ctx.fillStyle = '#2980b9';
     ctx.fillRect(x + pad, y + pad, w, h);
     ctx.strokeRect(x + pad, y + pad, w, h);
-
     ctx.fillStyle = '#fff';
     ctx.font = '12px monospace';
     ctx.textAlign = 'center';
@@ -317,21 +379,17 @@ function drawMeasurements() {
 function drawDraggingGate() {
   const pad = 4;
   const { q, t } = getCellFromCoords(dragX, dragY);
-
   if (q !== null && t !== null && q < N_QUBITS && t !== N_STEPS - 1) {
     const x = t * cellW, y = q * cellH;
     ctx.fillStyle = 'rgba(231, 126, 35, 0.3)';
     ctx.fillRect(x + 1, y + 1, cellW - 2, cellH - 2);
   }
-
   const w = cellW - 2 * pad;
   const h = cellH - 2 * pad;
-
   ctx.fillStyle = '#e74c3c';
   ctx.fillRect(dragX - w / 2, dragY - h / 2, w, h);
   ctx.strokeStyle = '#222';
   ctx.strokeRect(dragX - w / 2, dragY - h / 2, w, h);
-
   ctx.fillStyle = '#fff';
   ctx.font = '12px monospace';
   ctx.textAlign = 'center';
@@ -340,7 +398,6 @@ function drawDraggingGate() {
 }
 
 // ---------- Drag events ----------
-
 window.addEventListener('mousemove', e => {
   if (!dragging || !dragGate) return;
   const rect = canvas.getBoundingClientRect();
@@ -352,16 +409,13 @@ window.addEventListener('mousemove', e => {
 window.addEventListener('mouseup', e => {
   if (!dragging || !dragGate) return;
   dragging = false;
-
   const rect = canvas.getBoundingClientRect();
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
   const { q, t } = getCellFromCoords(x, y);
-
   if (q !== null && t !== null && q < N_QUBITS && t !== N_STEPS - 1) {
     placeGate(dragGate.name, q, t);
   }
-
   dragGate = null;
   drawCircuit();
 });
@@ -382,7 +436,6 @@ canvas.addEventListener('click', e => {
 });
 
 // ---------- Run circuit: include Ms logically ----------
-
 document.getElementById('runBtn').addEventListener('click', async () => {
   const noise = document.getElementById('noiseToggle').checked;
   const persistent = document.getElementById('persistToggle').checked;
@@ -410,7 +463,6 @@ document.getElementById('runBtn').addEventListener('click', async () => {
   }
 
   // TODO: call backend /simulate here
-
   drawCircuit();
 });
 

@@ -22,22 +22,52 @@
       <div id="left-panel">
         <div class="panel-title">Operations</div>
 
-        <div id="gate-library">
-          <!-- 1-qubit gates -->
-          <button class="gate-btn" data-gate="H">H</button>
-          <button class="gate-btn" data-gate="X">X</button>
-          <button class="gate-btn" data-gate="Y">Y</button>
-          <button class="gate-btn" data-gate="Z">Z</button>
-          <button class="gate-btn" data-gate="RX">RX</button>
-          <button class="gate-btn" data-gate="RY">RY</button>
-          <button class="gate-btn" data-gate="RZ">RZ</button>
-          <!-- 2-qubit -->
-          <button class="gate-btn" data-gate="CNOT">CNOT</button>
-          <!-- Measurement (fixed at end) -->
-          <button class="gate-btn" data-gate="M">M</button>
+        <!-- Search -->
+        <div id="gate-search-bar">
+          <input id="gateSearch" type="text" placeholder="Search gates...">
         </div>
 
-        <div class="toggle-row" id="limitsText">
+        <!-- Filters -->
+        <div id="gate-filters">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="single">1‑Qubit</button>
+          <button class="filter-btn" data-filter="multi">2‑Qubit</button>
+          <button class="filter-btn" data-filter="measure">Measure</button>
+        </div>
+
+        <!-- Gate library -->
+        <div id="gate-library">
+          <!-- 1‑qubit Pauli / Clifford -->
+          <button class="gate-btn" data-gate="I"    data-type="single">I</button>
+          <button class="gate-btn" data-gate="X"    data-type="single">X</button>
+          <button class="gate-btn" data-gate="Y"    data-type="single">Y</button>
+          <button class="gate-btn" data-gate="Z"    data-type="single">Z</button>
+          <button class="gate-btn" data-gate="H"    data-type="single">H</button>
+          <button class="gate-btn" data-gate="S"    data-type="single">S</button>
+          <button class="gate-btn" data-gate="SDG"  data-type="single">S†</button>
+          <button class="gate-btn" data-gate="T"    data-type="single">T</button>
+          <button class="gate-btn" data-gate="TDG"  data-type="single">T†</button>
+
+          <!-- Rotations / param gates -->
+          <button class="gate-btn" data-gate="RX"   data-type="single">RX</button>
+          <button class="gate-btn" data-gate="RY"   data-type="single">RY</button>
+          <button class="gate-btn" data-gate="RZ"   data-type="single">RZ</button>
+          <button class="gate-btn" data-gate="U3"   data-type="single">U3</button>
+          <button class="gate-btn" data-gate="SX"   data-type="single">√X</button>
+          <button class="gate-btn" data-gate="SXDG" data-type="single">√X†</button>
+
+          <!-- 2‑qubit entanglers -->
+          <button class="gate-btn" data-gate="CNOT" data-type="multi">CNOT</button>
+          <button class="gate-btn" data-gate="CZ"   data-type="multi">CZ</button>
+          <button class="gate-btn" data-gate="SWAP" data-type="multi">SWAP</button>
+          <button class="gate-btn" data-gate="CRX"  data-type="multi">CRX</button>
+          <button class="gate-btn" data-gate="CRZ"  data-type="multi">CRZ</button>
+
+          <!-- Measurement -->
+          <button class="gate-btn" data-gate="M"    data-type="measure">M</button>
+        </div>
+
+        <div id="limitsText">
           <small>Max qubits: 4 · Max gates: 15</small>
         </div>
 
