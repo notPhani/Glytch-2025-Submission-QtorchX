@@ -2386,7 +2386,7 @@ async def simulate(req: SimRequest) -> SimResponse:
     - Measurements fixed at t=14
     - Returns statevector, histograms, Bloch spheres, and phi manifold (if noise enabled)
     """
-    
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     start_time = time.time()
     
     # ------------------------------------------------------------------------
@@ -2472,7 +2472,6 @@ async def simulate(req: SimRequest) -> SimResponse:
         # --- Phi Manifold Extraction ---
         phi_start = time.time()
         
-        device = "cuda" if torch.cuda.is_available() else "cpu"
         
         # Placeholder matrices (you can load calibrated ones later)
         DecoherenceProjectionMatrix = torch.eye(3, 6, device=device, dtype=torch.float32)
@@ -2537,7 +2536,7 @@ async def simulate(req: SimRequest) -> SimResponse:
         "shots": req.shots,
         "noise_enabled": req.noise_enabled,
         "persistent_mode": req.persistent_mode,
-        "device": "cuda" if torch.cuda.is_available() else "cpu",
+        "device": device
     }
     
     # ------------------------------------------------------------------------
