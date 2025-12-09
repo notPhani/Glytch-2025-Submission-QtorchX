@@ -1,0 +1,13 @@
+W = torch.tensor([
+    # X-errors (bit flips): Dominated by stochastic + disturbance
+    [0.15, 0.08, 0.25, 0.03, 0.08, 0.35],
+    
+    # Y-errors (bit+phase): Balanced mix (Y = iXZ)
+    [0.12, 0.12, 0.20, 0.05, 0.10, 0.25],
+    
+    # Z-errors (dephasing): Dominated by memory + disturbance
+    [0.40, 0.25, 0.45, 0.02, 0.08, 0.15]
+], dtype=torch.float32)
+
+# Baseline Pauli offset (Z-errors have higher baseline)
+    B = torch.tensor([0.0005, 0.0003, 0.0025], dtype=torch.float32)
