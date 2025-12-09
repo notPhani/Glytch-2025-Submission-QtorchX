@@ -1455,3 +1455,46 @@ class PhiManifoldExtractor:
             f"  device={self.device}\n"
             f")"
         )
+
+class QtorchBackend:
+    """
+    This is the main entry point for the Qtorch quantum computing backend.
+    This will contain functions to configure the qubits, statevectors etc
+    Then will have three main flags:
+        . simulate_with_noise: bool - whether to simulate with noise or not
+        . persistant_data: bool - whether to store persistant data or not
+        . fusion_optimizations: bool - whether to use fusion optimizations or not (this is optional for noise retained simulations)
+    """
+    def __init__(self, simulate_with_noise:bool = False, persistant_data:bool = True, fusion_optimizations:bool = False, device:str = 'cuda' if torch.cuda.is_available() else 'cpu', circuit:Circuit = None):
+        self.simulate_with_noise = simulate_with_noise
+        self.persistant_data = persistant_data
+        self.fusion_optimizations = fusion_optimizations
+        self.device = device
+        self.circuit = circuit
+        self.num_qubits = circuit.num_qubits if circuit else 0
+        if self.num_qubits > 24:
+            raise ValueError(f"QtorchBackend supports up to 24 qubits but given {self.num_qubits}")
+        self.statevector = torch.zeros((2**self.num_qubits,), dtype=torch.complex64, device=self.device)
+        self.statevector[0] = 1.0 + 0.0j  # Initialize to |0...0>
+
+    def set_qubit_state(self, qubit_index:int, state: complex):
+        pass
+    def set_statevector(self, statevector: torch.Tensor):
+        pass
+    def apply_gate(self, gate:Gate):
+        pass
+    def measure_qubit(self,qubit_index:int):
+        pass  
+    def reset(self):
+        pass
+    def get_bloch_sphere(self, qubit_index:int):
+        pass
+    def get_all_bloch_sphere(self):
+        pass
+    def execute_circuit(self):
+        pass
+    def get_final_statevector(self) -> torch.Tensor:
+        pass
+    def get_histogram_data(self, shots:int = 1024) -> Dict[str, int]:
+        pass
+    
