@@ -1509,93 +1509,76 @@ class QtorchBackend:
             raise ValueError("Statevector has zero norm (invalid state)")
         self.statevector = self.statevector / norm
 
-    def apply_gate(self, gate_op: Gate):
+    def apply_gate(self, gate: Gate) -> None:
         """
-        Apply a gate operation to the state vector with optional noise.
+        Apply gate to statevector with optional noise.
         
         Args:
-            gate_op: Gate operation to apply
+            gate: Gate instance from Circuit
             
         Raises:
             ValueError: If gate is unknown or qubits are invalid
         """
-        spec = gate_op.spec
-        name = gate_op.name
-        
         # ========================================================================
         # VALIDATION
         # ========================================================================
         
         # Validate qubit indices
-        for q in gate_op.qubits:
+        for q in gate.qubits:
             if q < 0 or q >= self.num_qubits:
                 raise ValueError(
-                    f"Gate {name} uses qubit {q} but circuit only has "
+                    f"Gate {gate.name} uses qubit {q} but circuit only has "
                     f"{self.num_qubits} qubits (indices 0-{self.num_qubits-1})"
                 )
         
         # Check for duplicate qubits
-        if len(gate_op.qubits) != len(set(gate_op.qubits)):
+        if len(gate.qubits) != len(set(gate.qubits)):
             raise ValueError(
-                f"Gate {name} has duplicate qubits: {gate_op.qubits}"
+                f"Gate {gate.name} has duplicate qubits: {gate.qubits}"
             )
         
         # ========================================================================
-        # HANDLE SPECIAL OPERATIONS
+        # HANDLE SPECIAL GATES
         # ========================================================================
         
-        if spec is None:
-            if name == "M":
-                self._apply_measure(gate_op.qubits[0])
-            elif name == "Xc":
-                self._apply_classical_pauli(
-                    gate_op.qubits[0], 
-                    "X", 
-                    gate_op.depends_on
-                )
-            elif name == "Zc":
-                self._apply_classical_pauli(
-                    gate_op.qubits[0], 
-                    "Z", 
-                    gate_op.depends_on
-                )
-            else:
-                raise ValueError(f"Unknown special operation: {name}")
+        # Measurement gate
+        if gate.name.upper() == 'M':
+            for q in gate.qubits:
+                self._apply_measure(q)
+            return
+        
+        # Classical control gates (for teleportation)
+        if gate.name.upper() == 'XC':
+            if gate.depends_on and len(gate.depends_on) >= 2:
+                self._apply_classical_pauli(gate.qubits[0], 'X', gate.depends_on)
+            return
+        
+        if gate.name.upper() == 'ZC':
+            if gate.depends_on and len(gate.depends_on) >= 2:
+                self._apply_classical_pauli(gate.qubits[0], 'Z', gate.depends_on)
             return
         
         # ========================================================================
-        # GET GATE MATRIX (WITH CACHE HIERARCHY)
+        # GET GATE MATRIX FROM GATELIBRARY
         # ========================================================================
         
-        if self.persistent_data:
-            # Priority 1: Fixed cache (H, X, Y, Z, CNOT, etc.)
-            if name in self._fixed_cache:
-                U = self._fixed_cache[name]
-                
-            # Priority 2: Parametric gates with LRU cache + quantization
-            elif gate_op.params:
-                quantized_params = self._quantize_params(gate_op.params)
-                U = self._parametric_cache(name, quantized_params)
-                
-            # Priority 3: Non-parametric gate not in fixed cache
-            else:
-                U = spec.matrix_fn(None)
-                if U is None:
-                    raise ValueError(f"Gate {name} returned None matrix")
-                U = U.to(self.device)
-        else:
-            # Baseline mode: compute fresh every time
-            U = spec.matrix_fn(gate_op.params)
-            if U is None:
-                raise ValueError(f"Gate {name} returned None matrix")
-            U = U.to(self.device)
+        try:
+            U = GateLibrary.get_gate(gate.name, gate.params)
+        except ValueError as e:
+            raise ValueError(f"Unknown gate '{gate.name}': {e}")
+        
+        if U is None:
+            raise ValueError(f"Gate '{gate.name}' returned None matrix")
+        
+        # Move to device and ensure correct dtype
+        U = U.to(dtype=torch.complex64, device=self.device)
         
         # Validate matrix shape
-        k = len(gate_op.qubits)
-        expected_size = 1 << k
+        k = len(gate.qubits)
+        expected_size = 1 << k  # 2^k
         if U.shape != (expected_size, expected_size):
             raise ValueError(
-                f"Gate {name} matrix has shape {U.shape}, expected "
+                f"Gate '{gate.name}' matrix has shape {U.shape}, expected "
                 f"{(expected_size, expected_size)} for {k}-qubit gate"
             )
         
@@ -1603,52 +1586,53 @@ class QtorchBackend:
         # APPLY IDEAL GATE
         # ========================================================================
         
-        self._apply_k_qubit(U, gate_op.qubits)
+        self._apply_k_qubit(U, gate.qubits)
         
         # ========================================================================
         # APPLY NOISE (IF ENABLED)
         # ========================================================================
         
-        if self.simulate_with_noise and 'noise_model' in gate_op.metadata:
-            self._apply_noise_from_metadata(gate_op)
+        if self.simulate_with_noise and 'noise_model' in gate.metadata:
+            self._apply_noise_from_metadata(gate)
 
 
-    def _apply_k_qubit(self, U: torch.Tensor, targets: Sequence[int]):
+    def _apply_k_qubit(self, U: torch.Tensor, targets: List[int]) -> None:
         """
-        Apply k-qubit gate U (2^k x 2^k) on given target qubits.
+        Apply k-qubit gate U on target qubits using efficient tensor reshaping.
         
-        This uses efficient tensor reshaping to avoid building full 2^n x 2^n matrix.
-        Complexity: O(2^n) instead of O(2^{2n})
+        This avoids building the full 2^n × 2^n matrix, instead using tensor
+        operations for O(2^n) complexity instead of O(2^{2n}).
         
         Args:
-            U: Gate matrix (2^k, 2^k)
-            targets: Target qubit indices
+            U: Gate matrix of shape (2^k, 2^k)
+            targets: List of target qubit indices
         """
         n = self.num_qubits
         k = len(targets)
-        
-        # Validate
         expected_size = 1 << k
-        assert U.shape == (expected_size, expected_size), \
-            f"Matrix shape mismatch: {U.shape} vs {(expected_size, expected_size)}"
         
-        # Reshape statevector to tensor: (2, 2, 2, ..., 2) with n dimensions
-        psi = self.state.view([2] * n)
+        # Validate matrix size
+        assert U.shape == (expected_size, expected_size), \
+            f"Matrix shape {U.shape} doesn't match {k}-qubit gate"
+        
+        # Reshape statevector to n-dimensional tensor: (2, 2, 2, ..., 2)
+        psi = self.statevector.view([2] * n)
         
         # Move target qubits to the end via permutation
-        # Example: n=5, targets=[1,3] → perm = [0,2,4,1,3]
+        # Example: n=5, targets=[1,3] → perm=[0,2,4,1,3]
         targets = list(targets)
         perm = [i for i in range(n) if i not in targets] + targets
         psi = psi.permute(perm)
         
         # Reshape to (batch_size, 2^k) where batch_size = 2^(n-k)
-        batch = psi.numel() // (1 << k)
-        psi = psi.reshape(batch, 1 << k)
+        batch = psi.numel() // expected_size
+        psi = psi.reshape(batch, expected_size)
         
-        # Apply gate: (batch, 2^k) @ (2^k, 2^k)^T = (batch, 2^k)
+        # Apply gate via matrix multiplication
+        # (batch, 2^k) @ (2^k, 2^k)^T = (batch, 2^k)
         psi = psi @ U.t()
         
-        # Reshape back to tensor
+        # Reshape back to n-dimensional tensor
         psi = psi.view([2] * n)
         
         # Inverse permutation to restore original qubit order
@@ -1658,20 +1642,20 @@ class QtorchBackend:
         psi = psi.permute(inv)
         
         # Flatten back to statevector
-        self.state = psi.reshape(-1)
+        self.statevector = psi.reshape(-1)
 
 
-    def _apply_noise_from_metadata(self, gate_op: GateOp):
+    def _apply_noise_from_metadata(self, gate: Gate) -> None:
         """
         Apply Pauli noise based on phi manifold annotation in gate metadata.
         
         For each qubit the gate touches, sample error type from probabilities
-        and apply corresponding Pauli operator (X, Y, or Z).
+        [p_i, p_x, p_y, p_z] and apply corresponding Pauli operator.
         
         Args:
-            gate_op: Gate operation with noise_model in metadata
+            gate: Gate with 'noise_model' in metadata
         """
-        noise = gate_op.metadata['noise_model']
+        noise = gate.metadata['noise_model']
         pauli_probs = noise['pauli_probs']
         
         # Apply noise to each qubit this gate touched
@@ -1697,50 +1681,57 @@ class QtorchBackend:
             # else: no error (identity with probability p_i)
 
 
-    def _apply_single_pauli(self, pauli_type: str, qubit: int):
+    def _apply_single_pauli(self, pauli_name: str, qubit: int) -> None:
         """
-        Apply single Pauli gate (X, Y, or Z) to a qubit.
+        Apply single Pauli gate (X, Y, or Z) to one qubit.
         
-        This is optimized for noise application - uses cached Pauli matrices.
+        Optimized for noise application - uses GateLibrary directly.
         
         Args:
-            pauli_type: 'X', 'Y', or 'Z'
-            qubit: Target qubit index
+            pauli_name: 'X', 'Y', or 'Z'
+            qubit: Target qubit index (0 to n-1)
         """
-        # Get Pauli matrix from cache (these should always be cached)
-        if pauli_type not in self._fixed_cache:
-            # Fallback: get from gate library
-            spec = Gates.by_name.get(pauli_type)
-            if spec is None:
-                raise ValueError(f"Unknown Pauli type: {pauli_type}")
-            U = spec.matrix_fn(None).to(self.device)
-        else:
-            U = self._fixed_cache[pauli_type]
+        # Get Pauli matrix from GateLibrary
+        U = GateLibrary.get_gate(pauli_name, [])
+        
+        if U is None:
+            raise ValueError(f"Cannot get Pauli matrix for '{pauli_name}'")
+        
+        U = U.to(dtype=torch.complex64, device=self.device)
         
         # Apply to single qubit
         self._apply_k_qubit(U, [qubit])
 
 
-    def _apply_measure(self, q: int):
+    def _apply_measure(self, q: int) -> int:
         """
-        Z-basis measurement with state collapse.
+        Perform Z-basis measurement of a single qubit with state collapse.
         
-        Samples outcome from |ψ|² probability distribution, then collapses
-        the statevector by projecting onto measured eigenspace.
+        Samples outcome from |ψ|² probability distribution, then projects
+        the statevector onto the measured eigenspace.
         
         Args:
-            q: Qubit to measure (0 to n-1)
+            q: Qubit index to measure (0 to n-1)
+            
+        Returns:
+            Measurement outcome (0 or 1)
+            
+        Raises:
+            ValueError: If qubit index is invalid
+            RuntimeError: If state has zero norm
         """
         n = self.num_qubits
         
-        # Validate
+        # Validate qubit index
         if q < 0 or q >= n:
-            raise ValueError(f"Cannot measure qubit {q} (only have {n} qubits)")
+            raise ValueError(
+                f"Cannot measure qubit {q} (circuit has {n} qubits)"
+            )
         
-        # Reshape to tensor
-        psi = self.state.view([2] * n)
+        # Reshape statevector to tensor
+        psi = self.statevector.view([2] * n)
         
-        # Move measured qubit to end
+        # Move measured qubit to last dimension
         perm = [i for i in range(n) if i != q] + [q]
         psi = psi.permute(perm)
         
@@ -1755,20 +1746,23 @@ class QtorchBackend:
         # Normalize (handle numerical errors)
         total = p0 + p1
         if total < 1e-10:
-            raise RuntimeError("Measurement probabilities sum to zero (invalid state)")
+            raise RuntimeError(
+                f"Measurement of qubit {q} has zero probability "
+                "(invalid quantum state)"
+            )
         p0 /= total
         p1 /= total
         
-        # Sample outcome
+        # Sample measurement outcome
         r = torch.rand((), device=self.device).item()
         outcome = 0 if r < p0 else 1
         
-        # Collapse state: project onto |outcome⟩
+        # Collapse state: project onto |outcome⟩ subspace
         mask = torch.zeros_like(psi)
         mask[:, outcome] = 1.0
         psi = psi * mask
         
-        # Renormalize
+        # Renormalize collapsed state
         norm = torch.linalg.norm(psi)
         if norm > 0:
             psi = psi / norm
@@ -1776,20 +1770,29 @@ class QtorchBackend:
         # Reshape back to tensor
         psi = psi.view([2] * n)
         
-        # Inverse permutation
+        # Inverse permutation to restore qubit order
         inv = [0] * n
         for i, p in enumerate(perm):
             inv[p] = i
         psi = psi.permute(inv)
         
-        # Flatten to statevector
-        self.state = psi.reshape(-1)
+        # Flatten back to statevector
+        self.statevector = psi.reshape(-1)
         
-        # Store measurement result
-        self.creg[q] = outcome
+        # Store measurement result in classical register
+        if not hasattr(self, 'measurement_results'):
+            self.measurement_results = {}
+        self.measurement_results[q] = outcome
+        
+        return outcome
 
 
-    def _apply_classical_pauli(self, target_q: int, which: str, depends_on):
+    def _apply_classical_pauli(
+        self, 
+        target_q: int, 
+        pauli: str, 
+        depends_on: List[Gate]
+    ) -> None:
         """
         Apply X or Z gate conditioned on classical measurement outcomes.
         
@@ -1798,43 +1801,51 @@ class QtorchBackend:
         
         Args:
             target_q: Qubit to apply gate on
-            which: 'X' or 'Z'
-            depends_on: List of measurement gates this depends on
+            pauli: 'X' or 'Z'
+            depends_on: List of measurement gates (should be length 2)
         """
         if len(depends_on) != 2:
             return
         
+        # Extract measurement gate info
         m0_gate, m1_gate = depends_on
         q0 = m0_gate.qubits[0]
         q1 = m1_gate.qubits[0]
         
         # Get measurement outcomes from classical register
-        b0 = self.creg.get(q0, None)
-        b1 = self.creg.get(q1, None)
-        
-        if b0 is None or b1 is None:
-            # Measurements haven't happened yet
+        if not hasattr(self, 'measurement_results'):
             return
         
-        # Determine if we should fire the gate
+        b0 = self.measurement_results.get(q0, None)
+        b1 = self.measurement_results.get(q1, None)
+        
+        # If measurements haven't happened yet, skip
+        if b0 is None or b1 is None:
+            return
+        
+        # Determine if we should apply the gate
         fire = False
-        if which == "Z":
+        if pauli == 'Z':
+            # Z correction depends on first measurement
             fire = (b0 == 1)
-        elif which == "X":
+        elif pauli == 'X':
+            # X correction depends on second measurement
             fire = (b1 == 1)
         else:
-            raise ValueError(f"Unknown classical Pauli: {which}")
+            raise ValueError(f"Unknown classical Pauli: '{pauli}'")
         
-        if not fire:
-            return
+        # Apply gate if condition is met
+        if fire:
+            self._apply_single_pauli(pauli, target_q)
+
+
+    def reset(self) -> None:
+        """Reset statevector to |0...0⟩ and clear measurement results."""
+        self.statevector.zero_()
+        self.statevector[0] = 1.0 + 0.0j
         
-        # Apply the gate
-        spec = Gates.by_name.get(which)
-        if spec is None:
-            raise ValueError(f"Unknown gate: {which}")
-        
-        U = spec.matrix_fn(None).to(self.device)
-        self._apply_k_qubit(U, [target_q])
+        if hasattr(self, 'measurement_results'):
+            self.measurement_results.clear()
 
     def measure_qubit(self,qubit_index:int):
         pass  
@@ -1850,4 +1861,4 @@ class QtorchBackend:
         pass
     def get_histogram_data(self, shots:int = 1024) -> Dict[str, int]:
         pass
-    
+
