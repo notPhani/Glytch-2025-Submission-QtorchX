@@ -1236,7 +1236,34 @@ class PhiManifoldExtractor:
         pauli_channel = pauli_channel + self.BaselinePauliOffset[:, None, None]
         
         return pauli_channel
+    #---Star Function :) Annotating the ideal circuit with noise channels at appropriate time steps---#
+    # once this is complete the circuit can be simulated with noise at each time step
 
+    def annotate_circuit(self) -> Circuit:
+        """
+        This will get the generated Pauli channels and generate the list of Pauli error gates and locations (q, t)
+        And then will append them to the circuit at the appropriate time steps.
+        Final step then we get a perfectly non-functional circuit with real world noise added in. 
+        The formula for the Pauli channel give the three parameters Px, Py, Pz for each qubit at each time step is
+            For each qubit q in Q:
+                1. Extract Pauli probabilities at (q, t):
+                - p_x(q,t) = sigmoid(PauliChannel[0, q, t])
+                - p_y(q,t) = sigmoid(PauliChannel[1, q, t])
+                - p_z(q,t) = sigmoid(PauliChannel[2, q, t])
+                
+                2. Normalize to sum ≤ 1:
+                - p_total = p_x + p_y + p_z
+                - if p_total > 1: scale all by (1 / p_total)
+                - p_i = 1 - (p_x + p_y + p_z)  # Identity (no error)
+                
+                3. Store in gate.metadata['noise_model']:
+                - 'pauli_probs': {q: [p_i, p_x, p_y, p_z]}
+
+        Returns:
+            Annotated Circuit: Circuit with Pauli error gates added
+
+        """
+        pass
     # ========================================================================
     # UTILITY METHODS
     # ========================================================================
