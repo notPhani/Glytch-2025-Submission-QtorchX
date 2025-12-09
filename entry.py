@@ -914,6 +914,12 @@ class PhiManifoldExtractor:
             dtype=torch.float32,
             device=device
         )
+
+        self.PauliChannelField = torch.zeros(
+            (3, self.num_qubits, self.max_time),
+            dtype = torch.float32,
+            device = device
+        )
         
         # Precomputed graph structures (lazy initialization)
         self._laplacian: Optional[torch.Tensor] = None
@@ -1195,7 +1201,42 @@ class PhiManifoldExtractor:
         
         return self.PhiManifold
 
-    
+    def get_pauli_channel(self) -> torch.Tensor:
+        """
+        Project 6-channel phi manifold into 3-channel Pauli error space.
+        
+        Formula:
+            PauliChannel[p, q, t] = Σ_f W[p, f] * Φ[f, q, t] + B[p]
+            
+        Where:
+            - Φ: PhiManifold (6, num_qubits, max_time)
+            - W: DecoherenceProjectionMatrix (3, 6) 
+            - B: BaselinePauliOffset (3,)
+            
+        Returns:
+            PauliChannel: (3, num_qubits, max_time)
+        """
+        # Φ shape: (6, num_qubits, max_time)
+        # W shape: (3, 6)
+        # Want: (3, num_qubits, max_time)
+        
+        # Reshape for matmul: (6, num_qubits * max_time)
+        num_qubits = self.PhiManifold.shape[1]
+        max_time = self.PhiManifold.shape[2]
+        
+        phi_reshaped = self.PhiManifold.reshape(6, -1)  # (6, num_qubits * max_time)
+        
+        # Project: (3, 6) @ (6, num_qubits * max_time) -> (3, num_qubits * max_time)
+        pauli_flat = torch.matmul(self.DecoherenceProjectionMatrix, phi_reshaped)
+        
+        # Reshape back: (3, num_qubits, max_time)
+        pauli_channel = pauli_flat.reshape(3, num_qubits, max_time)
+        
+        # Add baseline offset (broadcast over qubits and time)
+        pauli_channel = pauli_channel + self.BaselinePauliOffset[:, None, None]
+        
+        return pauli_channel
+
     # ========================================================================
     # UTILITY METHODS
     # ========================================================================
