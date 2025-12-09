@@ -355,7 +355,7 @@ function drawCircuit() {
   ctx.fillStyle = '#10131b';
   ctx.fillRect(0, 0, W, H);
   
-  ctx.font = '12px monospace';
+  ctx.font = '12px Poppins, sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
 
@@ -481,7 +481,7 @@ function drawGateGlyph(gate) {
   
   // Gate label
   ctx.fillStyle = colors.text;
-  ctx.font = 'bold 12px monospace';
+  ctx.font = 'bold 12px Poppins, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(name, x + cellW / 2, y + cellH / 2);
@@ -511,7 +511,7 @@ function drawMeasurements() {
     ctx.strokeRect(x + pad, y + pad, w, h);
     
     ctx.fillStyle = colors.text;
-    ctx.font = 'bold 12px monospace';
+    ctx.font = 'bold 12px Poppins, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('M', x + cellW / 2, y + cellH / 2);
@@ -554,7 +554,7 @@ function drawDraggingGate() {
   ctx.strokeRect(dragX - w / 2, dragY - h / 2, w, h);
   
   ctx.fillStyle = colors.text;
-  ctx.font = 'bold 12px monospace';
+  ctx.font = 'bold 12px Poppins, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(dragGate.name, dragX, dragY);
@@ -686,7 +686,7 @@ function drawHistogram() {
 
   // Y-axis labels
   ctx.fillStyle = '#9ba0b5';
-  ctx.font = '11px monospace';
+  ctx.font = '11px Poppins, sans-serif';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';
 
@@ -710,13 +710,13 @@ function drawHistogram() {
   ctx.rotate(-Math.PI / 2);
   ctx.textAlign = 'center';
   ctx.fillStyle = '#e0e3ff';
-  ctx.font = '12px monospace';
+  ctx.font = '12px Poppins, sans-serif';
   ctx.fillText('Probability', 0, 0);
   ctx.restore();
 
   // X-axis labels
   ctx.fillStyle = '#9ba0b5';
-  ctx.font = '10px monospace';
+  ctx.font = '10px Poppins, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
 
@@ -729,7 +729,7 @@ function drawHistogram() {
 
   // X-axis label
   ctx.fillStyle = '#e0e3ff';
-  ctx.font = '12px monospace';
+  ctx.font = '12px Poppins, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('Quantum States', margin.left + plotWidth / 2, h - 10);
 
@@ -742,12 +742,12 @@ function drawHistogram() {
   ctx.fillStyle = '#e0e3ff';
   ctx.font = '11px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('Ideal', legendX + 20, legendY + 9);
+  ctx.fillText('Ideal', legendX + 20, legendY + 8);
 
   ctx.fillStyle = '#e67e22';
   ctx.fillRect(legendX + 80, legendY, 15, 10);
   ctx.fillStyle = '#e0e3ff';
-  ctx.fillText('Noisy', legendX + 100, legendY + 9);
+  ctx.fillText('Noisy', legendX + 100, legendY + 8);
 
   // Draw bars
   if (histogramData) {
@@ -934,7 +934,7 @@ function drawPhiLegend() {
   ctx.strokeRect(legendX, legendY, legendWidth, legendHeight);
 
   ctx.fillStyle = '#e0e3ff';
-  ctx.font = '9px monospace';
+  ctx.font = '9px Poppins, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('Low', legendX + 15, legendY + legendHeight + 10);
   ctx.fillText('Phi Intensity', legendX + legendWidth / 2, legendY + legendHeight + 10);
