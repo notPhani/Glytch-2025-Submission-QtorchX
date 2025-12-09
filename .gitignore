@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+*.pyo
+.Python
+venv/
+env/
+
+# Test/study files (keep but don't track changes)
+test.py
+test1.py
+VQE.py
+vqe_results*.png
+results/
+Ablations/
+
+# IDE
+.vscode/
+.idea/
