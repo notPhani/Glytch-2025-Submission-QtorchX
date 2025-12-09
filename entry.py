@@ -1475,7 +1475,7 @@ class QtorchBackend:
         if self.num_qubits > 24:
             raise ValueError(f"QtorchBackend supports up to 24 qubits but given {self.num_qubits}")
         self.statevector = torch.zeros((2**self.num_qubits,), dtype=torch.complex64, device=self.device)
-        self.statevector[0] = 1.0 + 0.0j  # Initialize to |0...0>
+        self.statevector[0] = 1.0 + 0.0j 
 
     def set_qubit_state(self, qubit_index:int, state: complex):
         pass
