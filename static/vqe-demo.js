@@ -632,7 +632,7 @@ class VQEAnimationController {
         this.idealFrame++;
         
         if (this.idealFrame >= animationData.ideal.length) {
-          document.getElementById('ideal-circuit-status').textContent = '✅ Converged';
+          document.getElementById('ideal-circuit-status').textContent = 'Converged';
           document.getElementById('ideal-circuit-status').classList.remove('running');
           document.getElementById('ideal-circuit-status').classList.add('converged');
         }
