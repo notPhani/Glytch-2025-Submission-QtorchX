@@ -2326,7 +2326,7 @@ class GateInput(BaseModel):
 
 class SimRequest(BaseModel):
     num_qubits: int
-    shots: int = 1024
+    shots: int = 10240
     noise_enabled: bool = False
     persistent_mode: bool = True
     show_phi: bool = True

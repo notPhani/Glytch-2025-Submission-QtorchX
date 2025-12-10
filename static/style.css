@@ -2,8 +2,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-               sans-serif;
+  font-family: 'IBM Plex Mono', 'Courier New', monospace; /* Changed from system-ui */
 }
 
 /* Lock to viewport */
@@ -98,6 +97,7 @@ body {
 .panel-title {
   font-size: 13px;
   font-weight: 600;
+  font-family: 'IBM Plex Mono', monospace; /* Add this */
 }
 
 .panel-subtitle {
@@ -120,6 +120,7 @@ body {
   border: 1px solid #3a4154;
   background: #10131b;
   color: #eaefff;
+  font-family: 'IBM Plex Mono', monospace; /* Add this */
 }
 
 #gate-filters {
@@ -172,6 +173,8 @@ body {
   background: #243047;
   color: #eaefff;
   cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace; /* Add this */
+  font-weight: 500;
 }
 
 .gate-btn:hover {
@@ -276,10 +279,12 @@ body {
   background: #10131b;
   color: #e0e3ff;
   border: 1px solid #2b2f3a;
-  font-family: "Fira Code", monospace;
-  font-size: 12px;
-  padding: 6px;
+  font-family: 'IBM Plex Mono', 'Courier New', monospace; /* Changed from Fira Code */
+  font-size: 11px; /* Slightly smaller for better fit */
+  line-height: 1.5; /* Better readability */
+  padding: 8px;
   resize: none;
+  letter-spacing: 0.02em; /* Slight spacing like Qiskit */
 }
 
 /* Bottom area: probabilities + Bloch */
@@ -373,7 +378,7 @@ body {
 
 /* Loading Message */
 .loading-message {
-  font-family: 'Courier New', monospace;
+  font-family: 'IBM Plex Mono', 'Courier New', monospace; /* Changed */
   font-size: 16px;
   color: #9b59b6;
   font-weight: 600;
