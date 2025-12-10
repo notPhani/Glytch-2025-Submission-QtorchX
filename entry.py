@@ -2191,22 +2191,20 @@ class QtorchBackend:
     def get_significant_states(self, threshold: float = 0.0) -> List[Dict[str, Any]]:
         """
         Extract significant computational basis states from statevector.
-        Returns Bloch sphere coordinates for states with |amplitude|² > threshold.
+        Maps each state to a Bloch-like visualization using amplitude and phase.
         
         Args:
             threshold: Minimum probability to include state
             
         Returns:
-            List of dicts with: {state_label, probability, theta, phi, x, y, z}
+            List of dicts with: {state, probability, theta, phi, x, y, z}
         """
         statevector = self.statevector.cpu()
         probs = torch.abs(statevector) ** 2
-        
         significant_states = []
         
         for idx in range(len(statevector)):
             prob = probs[idx].item()
-            
             if prob >= threshold:
                 # Convert index to binary string (e.g., 8 -> "1000" for 4 qubits)
                 state_label = format(idx, f'0{self.num_qubits}b')
@@ -2215,17 +2213,19 @@ class QtorchBackend:
                 amp = statevector[idx]
                 re = float(torch.real(amp))
                 im = float(torch.imag(amp))
+                r = float(torch.abs(amp))  # sqrt(probability)
                 
-                # Convert to Bloch sphere coordinates
-                # For basis states, we use the phase of the amplitude
-                r = float(torch.abs(amp))  # Magnitude
-                theta = 2 * np.arccos(r)   # Polar angle
-                phi = float(torch.angle(amp))  # Phase (azimuthal angle)
+                # Compute Bloch angles
+                # theta: map probability to polar angle (0 = high prob, π = low prob)
+                theta = np.arccos(2 * prob - 1)  # Maps [0,1] → [π, 0]
                 
-                # Cartesian coordinates
-                x = r * np.sin(theta) * np.cos(phi)
-                y = r * np.sin(theta) * np.sin(phi)
-                z = r * np.cos(theta)
+                # phi: azimuthal angle from complex phase
+                phi = float(torch.angle(amp))  # Phase in [-π, π]
+                
+                # Cartesian coordinates (standard spherical conversion)
+                x = np.sin(theta) * np.cos(phi)
+                y = np.sin(theta) * np.sin(phi)
+                z = np.cos(theta)
                 
                 significant_states.append({
                     'state': state_label,
@@ -2238,6 +2238,7 @@ class QtorchBackend:
                 })
         
         return significant_states
+
 
     def get_all_bloch_sphere(self) -> List[Dict[str, float]]:
         """
@@ -2448,7 +2449,20 @@ async def simulate(req: SimRequest) -> SimResponse:
         for amp in final_state
     ]
     significant_states = backend_ideal.get_significant_states(threshold=0.01)
-    bloch_states = [BlochState(**s) for s in significant_states]
+    # Convert backend states to API response format
+    bloch_states = [
+        BlochState(
+            state=s['state'],
+            probability=s['probability'],
+            theta=s['theta'],
+            phi=s['phi'],
+            x=s['x'],      # ✅ Make sure these are mapped
+            y=s['y'],      # ✅ Make sure these are mapped
+            z=s['z']       # ✅ Make sure these are mapped
+        )
+        for s in significant_states
+    ]
+
     
     ideal_time = time.time() - ideal_start
     
