@@ -138,7 +138,7 @@ function createWireSphere() {
     color: 0x2c3e50,
     wireframe: true,
     transparent: true,
-    opacity: 0.15
+    opacity: 0.09
   });
   const wireSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
   qsphereScene.add(wireSphere);
@@ -155,11 +155,14 @@ function createWireSphere() {
   qsphereScene.add(equator);
 
   // Add subtle meridian lines
+  /*
   for (let i = 0; i < 4; i++) {
     const meridian = new THREE.Mesh(ringGeometry, ringMaterial);
-    meridian.rotation.y = (i * Math.PI) / 4;
+    meridian.rotation = (i * Math.PI) / 4;
     qsphereScene.add(meridian);
   }
+    */
+    
 }
 
 function addAxisLabels() {
@@ -226,28 +229,27 @@ function updateQSphere(stateData) {
   const sortedStates = [...stateData].sort((a, b) => b.probability - a.probability);
 
   sortedStates.forEach((state, index) => {
-    if (state.probability < 0.001) return; // Skip very small probabilities
+  if (state.probability < 0.001) return;
 
-    const stateLabel = state.label || state.state || '0000';
-    const direction = getQSpherePosition(stateLabel, numQubits);
+  const stateLabel = state.label || state.state || '0000';
+  const direction = getQSpherePosition(stateLabel, numQubits);
 
-    // Arrow length based on probability (scaled to sphere radius)
-    const length = (0.3 + state.probability * 1.2)*1.5; // 0.3 to 1.5
+  // ✅ Arrow length: highest probability touches sphere surface!
+  const length = 0.2 + state.probability * 1.3; // 0.2 to 1.5
 
-    // Color based on phase
-    const color = getPhaseColor(state.phi || 0);
+  // Color based on phase
+  const color = getPhaseColor(state.phi || 0);
 
-    // Create arrow from origin to position on sphere
-    const origin = new THREE.Vector3(0, 0, 0);
-    const arrowHelper = new THREE.ArrowHelper(
-      direction,           // Direction (normalized)
-      origin,              // Origin (center of sphere)
-      length,              // Length (probability-based)
-      color.getHex(),      // Color (phase-based)
-      0.15,                // Head length
-      0.10                 // Head width
-    );
-
+  // Create arrow from origin to position on sphere
+  const origin = new THREE.Vector3(0, 0, 0);
+  const arrowHelper = new THREE.ArrowHelper(
+    direction,
+    origin,
+    length,
+    color.getHex(),
+    0.15,  // Head length
+    0.10   // Head width
+  );
     // Make arrow lines thicker for visibility
     arrowHelper.line.material.linewidth = 4;
 
