@@ -412,8 +412,8 @@ function drawGateGlyph(gate) {
   if (name === 'CNOT' && qubits.length === 2) {
     const qA = qubits[0];
     const qB = qubits[1];
-    const control = Math.max(qA, qB);
-    const target = Math.min(qA, qB);
+    const control = Math.min(qA, qB);
+    const target = Math.max(qA, qB);
     
     const xCenter = t * cellW + cellW / 2;
     const yControl = control * cellH + cellH / 2;

@@ -1,23 +1,43 @@
-
-// ========== BLOCH SPHERE - SINGLE SPHERE WITH COLORED ARROWS ==========
+// ========================================================================
+// BLOCH SPHERE - QUANTUM STATE VISUALIZATION
+// ========================================================================
 
 let blochScene, blochCamera, blochRenderer;
-let qubitArrows = []; // One arrow per qubit
+let stateArrows = []; // Dynamic array for quantum states
 let blochInitialized = false;
 let rotationSpeed = 0.003;
 
-// Color for each qubit
-const qubitColors = [
-  0x3498db, // q[0] - Blue
-  0xe74c3c, // q[1] - Red
-  0x2ecc71, // q[2] - Green
-  0xf39c12  // q[3] - Orange
+// Color palette for different states (vibrant colors)
+const STATE_COLORS = [
+  0x3498db, // Blue
+  0xe74c3c, // Red
+  0x2ecc71, // Green
+  0xf39c12, // Orange
+  0x9b59b6, // Purple
+  0x1abc9c, // Teal
+  0xe67e22, // Dark Orange
+  0xf1c40f, // Yellow
+  0xc0392b, // Dark Red
+  0x16a085, // Dark Teal
+  0x27ae60, // Dark Green
+  0x8e44ad, // Dark Purple
+  0x2980b9, // Dark Blue
+  0xd35400, // Burnt Orange
+  0x7f8c8d, // Gray
+  0x34495e  // Dark Gray
 ];
 
-// Initialize Three.js scene
-function initBlochSphere() {
-  console.log('🔵 [Bloch] Initializing single Bloch sphere...');
+function getStateColor(index) {
+  return STATE_COLORS[index % STATE_COLORS.length];
+}
 
+// ========================================================================
+// INITIALIZATION
+// ========================================================================
+
+function initBlochSphere() {
+  console.log('🔵 [Bloch] Initializing Bloch sphere for quantum states...');
+  
   const canvas = document.getElementById('blochCanvas');
   if (!canvas) {
     console.error('❌ [Bloch] Canvas element #blochCanvas not found!');
@@ -37,6 +57,7 @@ function initBlochSphere() {
     console.error('❌ [Bloch] THREE.js not loaded!');
     return;
   }
+
   console.log('✓ [Bloch] THREE.js loaded, version:', THREE.REVISION);
 
   // Scene
@@ -61,21 +82,20 @@ function initBlochSphere() {
   directionalLight.position.set(5, 5, 5);
   blochScene.add(directionalLight);
 
-  // Create the single Bloch sphere
+  // Create the Bloch sphere
   createBlochSphere();
-
-  // Create arrows for each qubit
-  createQubitArrows();
 
   blochInitialized = true;
   console.log('✅ [Bloch] Initialization complete!');
   animateBloch();
 }
 
-// Create single Bloch sphere with rings and axes
+// ========================================================================
+// BLOCH SPHERE GEOMETRY
+// ========================================================================
+
 function createBlochSphere() {
   console.log('🔵 [Bloch] Creating Bloch sphere...');
-
   const sphereGroup = new THREE.Group();
 
   // Horizontal rings (latitude lines)
@@ -102,7 +122,6 @@ function createBlochSphere() {
 
   // Axes (X, Y, Z)
   const axisLength = 1.4;
-  const axesMaterial = new THREE.LineBasicMaterial({ color: 0x5a6174 });
 
   // X axis (red tint)
   const xGeometry = new THREE.BufferGeometry().setFromPoints([
@@ -163,42 +182,47 @@ function createBlochSphere() {
   console.log('✓ [Bloch] Sphere created');
 }
 
-// Create colored arrows for each qubit
-function createQubitArrows() {
-  console.log('🔵 [Bloch] Creating qubit arrows...');
+// ========================================================================
+// STATE ARROW MANAGEMENT
+// ========================================================================
 
-  for (let i = 0; i < N_QUBITS; i++) {
-    const arrowDir = new THREE.Vector3(0, 1, 0);
-    const arrowOrigin = new THREE.Vector3(0, 0, 0);
-    const arrowLength = 1.0;
-    const arrowColor = qubitColors[i];
-
-    const arrow = new THREE.ArrowHelper(
-      arrowDir,
-      arrowOrigin,
-      arrowLength,
-      arrowColor,
-      0.2,
-      0.15
-    );
-
-    arrow.visible = false; // Hidden until state is set
-    blochScene.add(arrow);
-
-    qubitArrows.push({
-      arrow: arrow,
-      visible: false,
-      probability: 0,
-      qubitIndex: i
-    });
-
-    console.log(`✓ [Bloch] Created arrow for q[${i}] (color: ${arrowColor.toString(16)})`);
-  }
-
-  // Add legend
-  updateLegend();
+function clearStateArrows() {
+  // Remove all existing state arrows
+  stateArrows.forEach(stateObj => {
+    blochScene.remove(stateObj.arrow);
+  });
+  stateArrows = [];
 }
-// Create legend showing active states (dynamic)
+
+function createStateArrow(stateLabel, color, index) {
+  const arrowDir = new THREE.Vector3(0, 1, 0);
+  const arrowOrigin = new THREE.Vector3(0, 0, 0);
+  const arrowLength = 1.0;
+
+  const arrow = new THREE.ArrowHelper(
+    arrowDir,
+    arrowOrigin,
+    arrowLength,
+    color,
+    0.2,
+    0.15
+  );
+
+  blochScene.add(arrow);
+
+  return {
+    arrow: arrow,
+    stateLabel: stateLabel,
+    color: color,
+    probability: 0,
+    index: index
+  };
+}
+
+// ========================================================================
+// LEGEND
+// ========================================================================
+
 let legendGroup = null;
 
 function updateLegend() {
@@ -210,37 +234,39 @@ function updateLegend() {
   legendGroup = new THREE.Group();
   legendGroup.position.set(1.8, 1.2, 0);
 
-  let activeStates = qubitArrows.filter(a => a.visible);
-  
-  for (let i = 0; i < activeStates.length; i++) {
-    const arrow = activeStates[i];
+  // Sort states by probability (descending)
+  const sortedStates = [...stateArrows].sort((a, b) => b.probability - a.probability);
+
+  for (let i = 0; i < sortedStates.length; i++) {
+    const state = sortedStates[i];
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    canvas.width = 160;
+    canvas.width = 200;
     canvas.height = 32;
 
     // Draw colored square
-    ctx.fillStyle = '#' + qubitColors[arrow.qubitIndex].toString(16).padStart(6, '0');
+    ctx.fillStyle = '#' + state.color.toString(16).padStart(6, '0');
     ctx.fillRect(0, 8, 16, 16);
 
     // Draw state label
     ctx.fillStyle = '#e0e3ff';
-    ctx.font = '14px monospace';
+    ctx.font = 'bold 14px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`|${arrow.stateLabel}⟩ ${(arrow.probability * 100).toFixed(1)}%`, 22, 22);
+    ctx.fillText(`|${state.stateLabel}⟩ ${(state.probability * 100).toFixed(1)}%`, 22, 22);
 
     const texture = new THREE.CanvasTexture(canvas);
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture }));
-    sprite.position.set(0, -i * 0.3, 0);
-    sprite.scale.set(0.8, 0.2, 1);
+    sprite.position.set(0, -i * 0.35, 0);
+    sprite.scale.set(1.0, 0.25, 1);
     legendGroup.add(sprite);
   }
 
   blochScene.add(legendGroup);
 }
 
-
-// Update arrow states - MODIFIED FOR STATES
+// ========================================================================
+// UPDATE FUNCTION - CALLED FROM main.js
+// ========================================================================
 function updateBlochSpheres(stateData) {
   console.log('🔵 [Bloch] Updating quantum states:', stateData);
   
@@ -249,52 +275,78 @@ function updateBlochSpheres(stateData) {
     return;
   }
 
-  // Hide all arrows first
-  qubitArrows.forEach(arrow => {
-    arrow.arrow.visible = false;
-    arrow.visible = false;
-  });
+  // Clear existing arrows
+  clearStateArrows();
 
-  // Show arrows for each significant state
-  for (let i = 0; i < stateData.length && i < qubitArrows.length; i++) {
-    const state = stateData[i];
-    const arrow = qubitArrows[i];
-
-    // Hide if probability too low
-    if (state.probability < 0.01) {
-      console.log(`[Bloch] Hiding state ${state.label} (probability ${state.probability})`);
-      continue;
+  // Create new arrows for each state
+  stateData.forEach((state, index) => {
+    // ⚡ DEBUG: Log the actual state object structure
+    console.log('🔍 [Bloch] State object:', state);
+    
+    // Skip states with very low probability
+    if (!state.probability || state.probability < 0.001) {
+      console.log(`[Bloch] Skipping state (prob: ${state.probability})`);
+      return;
     }
 
-    arrow.arrow.visible = true;
-    arrow.visible = true;
-    arrow.probability = state.probability;
-    arrow.stateLabel = state.label;  // Store state label like "0000", "1000"
+    const color = getStateColor(index);
+    const stateObj = createStateArrow(state.label || state.state, color, index);
+    stateObj.probability = state.probability;
 
-    // Convert spherical to Cartesian
-    const x = Math.sin(state.theta) * Math.cos(state.phi);
-    const y = Math.cos(state.theta);
-    const z = Math.sin(state.theta) * Math.sin(state.phi);
-
-    // Update arrow direction
-    const direction = new THREE.Vector3(x, y, z).normalize();
-    arrow.arrow.setDirection(direction);
+    // ✅ Check if x, y, z exist, otherwise calculate from theta/phi
+    let x, y, z;
     
+    if (state.x !== undefined && state.y !== undefined && state.z !== undefined) {
+      // Use pre-calculated Cartesian coordinates
+      x = state.x;
+      y = state.y;
+      z = state.z;
+      console.log('✓ [Bloch] Using backend Cartesian coords');
+    } else if (state.theta !== undefined && state.phi !== undefined) {
+      // Fallback: calculate from spherical
+      const r = Math.sqrt(state.probability); // Approximate magnitude
+      x = r * Math.sin(state.theta) * Math.cos(state.phi);
+      y = r * Math.sin(state.theta) * Math.sin(state.phi);
+      z = r * Math.cos(state.theta);
+      console.log('⚠️ [Bloch] Calculated Cartesian from spherical');
+    } else {
+      console.error('❌ [Bloch] State missing both Cartesian AND spherical coords!', state);
+      return;
+    }
+
+    // Create direction vector
+    const direction = new THREE.Vector3(x, y, z);
+    const length = direction.length();
+    
+    if (length < 0.000) {
+      console.warn(`⚠️ [Bloch] State |${state.label || state.state}⟩ has zero length, skipping`);
+      return;
+    }
+    
+    direction.normalize();
+    stateObj.arrow.setDirection(direction);
+
     // Scale arrow by probability (bigger = more probable)
-    const length = 0.7 + state.probability * 0.3;  // 0.7 to 1.0
-    arrow.arrow.setLength(length, 0.2, 0.15);
+    const arrowLength = 0.6 + state.probability * 0.4; // 0.6 to 1.0
+    stateObj.arrow.setLength(arrowLength, 0.2, 0.15);
 
-    console.log(`✓ [Bloch] Updated state |${state.label}⟩: theta=${state.theta.toFixed(2)}, phi=${state.phi.toFixed(2)}, prob=${state.probability.toFixed(3)}`);
-  }
+    stateArrows.push(stateObj);
 
-  console.log('✅ [Bloch] Update complete');
+    console.log(`✓ [Bloch] Created state |${state.label || state.state}⟩: x=${x.toFixed(3)}, y=${y.toFixed(3)}, z=${z.toFixed(3)}, prob=${(state.probability * 100).toFixed(1)}%`);
+  });
+
+  // Update legend
+  updateLegend();
+
+  console.log(`✅ [Bloch] Update complete (${stateArrows.length} states displayed)`);
 }
 
+// ========================================================================
+// ANIMATION & RENDERING
+// ========================================================================
 
-// Animation loop with auto-rotation
 function animateBloch() {
   if (!blochInitialized) return;
-
   requestAnimationFrame(animateBloch);
 
   // Auto-rotate entire scene
@@ -303,7 +355,10 @@ function animateBloch() {
   blochRenderer.render(blochScene, blochCamera);
 }
 
-// Handle window resize
+// ========================================================================
+// WINDOW RESIZE
+// ========================================================================
+
 function resizeBlochCanvas() {
   if (!blochInitialized) return;
 
@@ -317,7 +372,10 @@ function resizeBlochCanvas() {
   console.log('[Bloch] Resized');
 }
 
-// Initialize on load
+// ========================================================================
+// INITIALIZATION
+// ========================================================================
+
 window.addEventListener('load', () => {
   console.log('🔵 [Bloch] Window loaded, initializing...');
   setTimeout(() => {
@@ -329,4 +387,4 @@ window.addEventListener('resize', () => {
   resizeBlochCanvas();
 });
 
-console.log('✅ [Bloch] Script loaded');
+console.log('✅ [Bloch] Script loaded (State visualization mode)');

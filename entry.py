@@ -2188,7 +2188,7 @@ class QtorchBackend:
             'y': float(y_exp),
             'z': float(z_exp)
         }
-    def get_significant_states(self, threshold: float = 0.01) -> List[Dict[str, Any]]:
+    def get_significant_states(self, threshold: float = 0.0) -> List[Dict[str, Any]]:
         """
         Extract significant computational basis states from statevector.
         Returns Bloch sphere coordinates for states with |amplitude|² > threshold.
@@ -2207,7 +2207,7 @@ class QtorchBackend:
         for idx in range(len(statevector)):
             prob = probs[idx].item()
             
-            if prob > threshold:
+            if prob >= threshold:
                 # Convert index to binary string (e.g., 8 -> "1000" for 4 qubits)
                 state_label = format(idx, f'0{self.num_qubits}b')
                 
@@ -2218,14 +2218,9 @@ class QtorchBackend:
                 
                 # Convert to Bloch sphere coordinates
                 # For basis states, we use the phase of the amplitude
-                r = float(torch.abs(amp))
-                
-                # Theta from |0⟩ (north) to |1⟩ (south)
-                # For superposition states, use amplitude magnitude
-                theta = 2 * np.arccos(r)  # 0 for |0⟩, π for |1⟩
-                
-                # Phi from phase of amplitude
-                phi = float(torch.angle(amp))
+                r = float(torch.abs(amp))  # Magnitude
+                theta = 2 * np.arccos(r)   # Polar angle
+                phi = float(torch.angle(amp))  # Phase (azimuthal angle)
                 
                 # Cartesian coordinates
                 x = r * np.sin(theta) * np.cos(phi)
