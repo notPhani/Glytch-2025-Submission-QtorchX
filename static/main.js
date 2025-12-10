@@ -355,7 +355,7 @@ function drawCircuit() {
   ctx.fillStyle = '#10131b';
   ctx.fillRect(0, 0, W, H);
   
-  ctx.font = '12px Poppins, sans-serif';
+  ctx.font = '12px "IBM Plex Mono", monospace';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
 
@@ -481,7 +481,7 @@ function drawGateGlyph(gate) {
   
   // Gate label
   ctx.fillStyle = colors.text;
-  ctx.font = 'bold 12px Poppins, sans-serif';
+  ctx.font = 'bold 12px "IBM Plex Mono", monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(name, x + cellW / 2, y + cellH / 2);
@@ -511,7 +511,7 @@ function drawMeasurements() {
     ctx.strokeRect(x + pad, y + pad, w, h);
     
     ctx.fillStyle = colors.text;
-    ctx.font = 'bold 12px Poppins, sans-serif';
+    ctx.font = 'bold 12px "IBM Plex Mono", monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('M', x + cellW / 2, y + cellH / 2);
@@ -554,7 +554,7 @@ function drawDraggingGate() {
   ctx.strokeRect(dragX - w / 2, dragY - h / 2, w, h);
   
   ctx.fillStyle = colors.text;
-  ctx.font = 'bold 12px Poppins, sans-serif';
+  ctx.font = 'bold 12px "IBM Plex Mono", monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(dragGate.name, dragX, dragY);
@@ -686,7 +686,7 @@ function drawHistogram() {
 
   // Y-axis labels
   ctx.fillStyle = '#9ba0b5';
-  ctx.font = '11px Poppins, sans-serif';
+  ctx.font = '11px "IBM Plex Mono", monospace';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';
 
@@ -710,13 +710,13 @@ function drawHistogram() {
   ctx.rotate(-Math.PI / 2);
   ctx.textAlign = 'center';
   ctx.fillStyle = '#e0e3ff';
-  ctx.font = '12px Poppins, sans-serif';
+  ctx.font = '12px "IBM Plex Mono", monospace';
   ctx.fillText('Probability', 0, 0);
   ctx.restore();
 
   // X-axis labels
   ctx.fillStyle = '#9ba0b5';
-  ctx.font = '10px Poppins, sans-serif';
+  ctx.font = '10px "IBM Plex Mono", monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
 
@@ -729,7 +729,7 @@ function drawHistogram() {
 
   // X-axis label
   ctx.fillStyle = '#e0e3ff';
-  ctx.font = '12px Poppins, sans-serif';
+  ctx.font = '12px "IBM Plex Mono", monospace';
   ctx.textAlign = 'center';
   ctx.fillText('Quantum States', margin.left + plotWidth / 2, h - 10);
 
@@ -934,7 +934,7 @@ function drawPhiLegend() {
   ctx.strokeRect(legendX, legendY, legendWidth, legendHeight);
 
   ctx.fillStyle = '#e0e3ff';
-  ctx.font = '9px Poppins, sans-serif';
+  ctx.font = '9px "IBM Plex Mono", monospace';
   ctx.textAlign = 'center';
   ctx.fillText('Low', legendX + 15, legendY + legendHeight + 10);
   ctx.fillText('Phi Intensity', legendX + legendWidth / 2, legendY + legendHeight + 10);
