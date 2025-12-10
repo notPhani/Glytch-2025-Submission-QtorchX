@@ -315,7 +315,479 @@
       opacity: 1;
       transform: translateY(0);
     }
-  </style>
+    /* ========================================================================
+   VQE COMPARISON DEMO - MATCHING SITE PALETTE
+   ======================================================================== */
+
+.demo-section {
+  height: 100vh;
+  min-height: 100vh;
+  max-height: 100vh;
+  background: linear-gradient(135deg, #161616 0%, #262626 50%, #161616 100%);
+  padding: 40px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.demo-container {
+  max-width: 1600px;
+  width: 100%;
+  height: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+/* Header */
+.demo-header {
+  text-align: center;
+  margin-bottom: 20px;
+  flex-shrink: 0;
+}
+
+.demo-header h1 {
+  color: #ffff;
+  font-size: 32px;
+  margin: 0 0 8px 0;
+  font-weight: 800;
+}
+
+.demo-subtitle {
+  color: #c6c6c6;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Main Grid Layout */
+.demo-grid {
+  display: grid;
+  grid-template-columns: 45% 55%;
+  gap: 20px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Circuits Column */
+.circuits-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+}
+
+.circuit-card {
+  background: #1e1e1e;
+  border: 2px solid #393939;
+  border-radius: 8px;
+  padding: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.circuit-card.ideal-circuit {
+  border-color: #0f62fe;
+}
+
+.circuit-card.noisy-circuit {
+  border-color: #ff5f56;
+}
+
+.circuit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.circuit-header h3 {
+  color: #fff;
+  font-size: 16px;
+  margin: 0;
+}
+
+.circuit-status {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #393939;
+  color: #c6c6c6;
+}
+
+.circuit-status.running {
+  background: #0f62fe;
+  color: #fff;
+  animation: pulse 1.5s infinite;
+}
+
+.circuit-status.converged {
+  background:#242424;
+  color: #fff;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Circuit SVG */
+.circuit-svg {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  background: #161616;
+  border: 1px solid #393939;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+/* Parameters Display */
+.params-display {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  padding: 10px;
+  background: #161616;
+  border: 1px solid #393939;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.param-box {
+  text-align: center;
+  padding: 6px 4px;
+  background: #262626;
+  border: 1px solid #393939;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.param-box.updating {
+  border-color: #0f62fe;
+  background: rgba(15, 98, 254, 0.1);
+}
+
+.param-box.noisy.updating {
+  border-color: #ff5f56;
+  background: rgba(255, 95, 86, 0.1);
+}
+
+.param-label {
+  display: block;
+  font-size: 10px;
+  color: #c6c6c6;
+  margin-bottom: 3px;
+  font-weight: 600;
+}
+
+.param-value {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  color: #0f62fe;
+}
+
+.noisy-circuit .param-value {
+  color: #ff5f56;
+}
+
+/* Graph Column */
+.graph-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.graph-card {
+  background: #1e1e1e;
+  border: 2px solid #393939;
+  border-radius: 8px;
+  padding: 16px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.graph-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.graph-header h3 {
+  color: #fff;
+  font-size: 16px;
+  margin: 0;
+}
+
+.graph-status {
+  font-size: 12px;
+  color: #c6c6c6;
+  font-style: italic;
+}
+
+.graph-container {
+  flex: 1;
+  min-height: 0;
+  background: #161616;
+  border: 1px solid #393939;
+  border-radius: 6px;
+  padding: 12px;
+}
+
+/* Controls */
+.controls-card {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.demo-btn {
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 400;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 0.5px;
+}
+
+.demo-btn-primary {
+  background: #0f62fe;
+  color: #fff;
+}
+
+.demo-btn-primary:hover:not(:disabled) {
+  background: #0353e9;
+  transform: translateY(-1px);
+}
+
+.demo-btn-primary:active {
+  transform: translateY(0);
+}
+
+.demo-btn-primary:disabled {
+  background: #393939;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.demo-btn-secondary {
+  background: #393939;
+  color: #fff;
+}
+
+.demo-btn-secondary:hover {
+  background: #262626;
+  transform: translateY(-1px);
+}
+
+/* Metrics Card */
+.metrics-card {
+  background: #1e1e1e;
+  border: 2px solid #242424;
+  border-radius: 8px;
+  padding: 14px;
+  flex-shrink: 0;
+  animation: slideIn 0.5s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.metrics-card h4 {
+  color: #ffff;
+  margin: 0 0 12px 0;
+  font-size: 15px;
+  text-align: center;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.metric-item {
+  background: #161616;
+  padding: 10px;
+  border: 1px solid #393939;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.metric-label {
+  display: block;
+  font-size: 10px;
+  color: #c6c6c6;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.metric-value {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+}
+
+.ideal-color {
+  color: #0f62fe;
+}
+
+.noisy-color {
+  color: #ff5f56;
+}
+
+.warning-color {
+  color: #ffbd2e;
+}
+
+/* Responsive */
+@media (max-width: 1400px) {
+  .demo-header h1 {
+    font-size: 28px;
+  }
+  
+  .params-display {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 1200px) {
+  .demo-section {
+    height: auto;
+    min-height: 100vh;
+    max-height: none;
+    padding: 40px 20px;
+  }
+  
+  .demo-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .circuits-column {
+    flex-direction: row;
+    min-height: 400px;
+  }
+
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .circuits-column {
+    flex-direction: column;
+  }
+
+  .demo-header h1 {
+    font-size: 24px;
+  }
+
+  .demo-subtitle {
+    font-size: 13px;
+  }
+
+  .params-display {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+  
+  /* ========================================================================
+     SMOOTH SCROLL BEHAVIOR
+     ======================================================================== */
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Scroll padding to account for fixed navbar */
+  html {
+    scroll-padding-top: 80px;
+  }
+
+  /* Active nav link highlighting */
+  .nav-links a {
+    position: relative;
+    transition: color 0.3s ease;
+  }
+
+  .nav-links a.active {
+    color: #0f62fe;
+  }
+
+  .nav-links a::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 0%;
+    height: 2px;
+    background: #0f62fe;
+    transition: width 0.3s ease;
+  }
+
+  .nav-links a.active::after {
+    width: 100%;
+  }
+
+  /* Section fade-in animation */
+  section {
+    opacity: 0;
+    transform: translateY(30px);
+    animation: fadeInUp 0.8s ease forwards;
+  }
+
+  @keyframes fadeInUp {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Stagger animation for sections */
+  #features {
+    animation-delay: 0.2s;
+  }
+
+  #demo-section {
+    animation-delay: 0.3s;
+  }
+
+</style>
 </head>
 <body>
   <!-- TOP NAV -->
@@ -326,6 +798,7 @@
         <li><a href="#features">Features</a></li>
         <li><a href="https://github.com/notPhani/QTorch/blob/main/README.md" target="_blank">Docs</a></li>
         <li><a href="https://github.com/notPhani/Glytch-2025-Submission-QtorchX" target="_blank">GitHub</a></li>
+        <li><a href="#demo-section">Demo (Real world Application)</a></li>
       </ul>
     </div>
     <a href="index.html" class="nav-cta">Launch Playground →</a>
@@ -376,6 +849,108 @@
       </div>
     </div>
   </section>
+
+  <!-- VQE COMPARISON DEMO SECTION -->
+<section id="demo-section" class="demo-section">
+  <div class="demo-container">
+    <!-- Header -->
+    <div class="demo-header">
+      <h1>VQE Live Demo: Ideal vs Noisy</h1>
+      <p class="demo-subtitle">Watch how quantum noise affects optimization convergence in real-time</p>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="demo-grid">
+      
+      <!-- LEFT: Circuits Column -->
+      <div class="circuits-column">
+        
+        <!-- Ideal Circuit -->
+        <!-- Ideal Circuit -->
+<div class="circuit-card ideal-circuit">
+  <div class="circuit-header">
+    <h3>🟦 Ideal Circuit</h3>
+    <span id="ideal-circuit-status" class="circuit-status">Ready</span>
+  </div>
+  <svg id="ideal-circuit-svg" class="circuit-svg"></svg>
+  <!-- REMOVED: <div class="params-display" id="ideal-params"></div> -->
+</div>
+
+<!-- Noisy Circuit -->
+<div class="circuit-card noisy-circuit">
+  <div class="circuit-header">
+    <h3>🟥 Noisy Circuit</h3>
+    <span id="noisy-circuit-status" class="circuit-status">Ready</span>
+  </div>
+  <svg id="noisy-circuit-svg" class="circuit-svg"></svg>
+  <!-- REMOVED: <div class="params-display" id="noisy-params"></div> -->
+</div>
+
+
+      </div>
+
+      <!-- RIGHT: Graph & Controls Column -->
+      <div class="graph-column">
+        
+        <!-- Comparison Graph -->
+        <div class="graph-card">
+          <div class="graph-header">
+            <h3>Energy Convergence Comparison</h3>
+            <span id="graph-status" class="graph-status">Waiting to start...</span>
+          </div>
+          <div class="graph-container">
+            <canvas id="comparison-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls-card">
+          <button id="run-comparison-btn" class="demo-btn demo-btn-primary">
+            Run Comparison
+          </button>
+          <button id="reset-demo-btn" class="demo-btn demo-btn-secondary">
+            Reset
+          </button>
+        </div>
+
+        <!-- Metrics Panel -->
+        <div class="metrics-card" id="metrics-card" style="display: none;">
+          <h4>Results Summary</h4>
+          <div class="metrics-grid">
+            <div class="metric-item">
+              <span class="metric-label">Ideal Iterations</span>
+              <span id="ideal-iters" class="metric-value ideal-color">--</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Noisy Iterations</span>
+              <span id="noisy-iters" class="metric-value noisy-color">--</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Iteration Difference</span>
+              <span id="iter-diff" class="metric-value warning-color">--</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Ideal Final Energy</span>
+              <span id="ideal-energy" class="metric-value ideal-color">--</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Noisy Final Energy</span>
+              <span id="noisy-energy" class="metric-value noisy-color">--</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Energy Difference</span>
+              <span id="energy-diff" class="metric-value warning-color">--</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+
+
 
   <!-- FEATURES SECTION -->
   <section class="features" id="features">
@@ -478,7 +1053,9 @@
       <a href="https://github.com/notPhani/QTorch/blob/main/README.md" target="_blank">Documentation</a>
     </p>
   </footer>
-
+<!-- Add Chart.js before your scripts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="vqe-demo.js"></script>
   <script>
     // Scroll animation observer
     const scrollElements = document.querySelectorAll('.scroll-fade');
@@ -553,5 +1130,68 @@
       }, 500);
     }, 8000);
   </script>
+
+  <!-- ========================================================================
+       SMOOTH SCROLL & ACTIVE NAV HIGHLIGHTING
+       ======================================================================== -->
+  <script>
+    // Smooth scroll with animation
+    document.addEventListener('DOMContentLoaded', () => {
+
+      // Get all navigation links that point to sections
+      const navLinks = document.querySelectorAll('.nav-links a[href^="#"]');
+
+      navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+
+          const targetId = link.getAttribute('href');
+          const targetSection = document.querySelector(targetId);
+
+          if (targetSection) {
+            // Smooth scroll to target
+            targetSection.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start'
+            });
+
+            // Update active link
+            updateActiveNavLink(link);
+          }
+        });
+      });
+
+      // Update active nav link on scroll
+      const sections = document.querySelectorAll('section[id]');
+
+      window.addEventListener('scroll', () => {
+        let current = '';
+
+        sections.forEach(section => {
+          const sectionTop = section.offsetTop;
+          const sectionHeight = section.clientHeight;
+
+          if (window.pageYOffset >= (sectionTop - 100)) {
+            current = section.getAttribute('id');
+          }
+        });
+
+        navLinks.forEach(link => {
+          link.classList.remove('active');
+          if (link.getAttribute('href') === `#${current}`) {
+            link.classList.add('active');
+          }
+        });
+      });
+
+      function updateActiveNavLink(activeLink) {
+        navLinks.forEach(link => link.classList.remove('active'));
+        activeLink.classList.add('active');
+      }
+
+      console.log('✨ [Smooth Scroll] Navigation animations loaded');
+    });
+  </script>
+
 </body>
 </html>
