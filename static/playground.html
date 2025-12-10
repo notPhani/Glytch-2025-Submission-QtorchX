@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QtorchX - PyTorch-Accelerated Quantum Computing</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #21252b;
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    /* ==================== TOP NAV ==================== */
+    .topnav {
+      background: #161616;
+      border-bottom: 1px solid #393939;
+      padding: 0 48px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    .topnav-left {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+
+    .logo {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      color: #fff;
+      text-decoration: none;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 24px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: #c6c6c6;
+      text-decoration: none;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: #fff;
+    }
+
+    .nav-cta {
+      background: #0f62fe;
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 4px;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    .nav-cta:hover {
+      background: #0353e9;
+    }
+
+    /* ==================== HERO SECTION ==================== */
+    .hero {
+      background: linear-gradient(135deg, #262626 0%, #161616 100%);
+      padding: 80px 48px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: center;
+      min-height: calc(100vh - 50px);
+    }
+
+    .hero-left h1 {
+      font-size: 64px;
+      font-weight: 600;
+      line-height: 1.1;
+      margin-bottom: 24px;
+      letter-spacing: -1px;
+    }
+
+    .hero-left p {
+      font-size: 18px;
+      color: #c6c6c6;
+      line-height: 1.6;
+      margin-bottom: 32px;
+      max-width: 540px;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 16px;
+    }
+
+    .btn-primary {
+      background: #0f62fe;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 4px;
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+      background: #0353e9;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: #0f62fe;
+      border: 1px solid #0f62fe;
+      padding: 12px 24px;
+      border-radius: 4px;
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(15, 98, 254, 0.1);
+    }
+
+    /* ==================== CODE TERMINAL ==================== */
+    .hero-right {
+      position: relative;
+    }
+
+    .code-window {
+      background: #1e1e1e;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .window-header {
+      background: #323233;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .window-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .dot-red { background: #ff5f56; }
+    .dot-yellow { background: #ffbd2e; }
+    .dot-green { background: #27c93f; }
+
+    .code-content {
+      padding: 24px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      line-height: 1.8;
+      height: 400px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .code-line {
+      opacity: 0;
+      transform: translateY(10px);
+      animation: fadeInUp 0.5s forwards;
+    }
+
+    @keyframes fadeInUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .keyword { color: #c586c0; }
+    .string { color: #ce9178; }
+    .function { color: #dcdcaa; }
+    .comment { color: #6a9955; }
+    .number { color: #b5cea8; }
+    .class { color: #4ec9b0; }
+
+    /* ==================== FEATURES SECTION ==================== */
+    .features {
+      padding: 120px 48px;
+      background: #161616;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 80px;
+    }
+
+    .section-number {
+      color: #0f62fe;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .section-title {
+      font-size: 48px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .section-subtitle {
+      font-size: 18px;
+      color: #c6c6c6;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 32px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .feature-card {
+      background: #262626;
+      border: 1px solid #393939;
+      border-radius: 8px;
+      padding: 32px;
+      transition: all 0.3s;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-4px);
+      border-color: #0f62fe;
+      box-shadow: 0 8px 24px rgba(15, 98, 254, 0.2);
+    }
+
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 16px;
+    }
+    
+    .feature-icon svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .feature-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .feature-desc {
+      font-size: 15px;
+      color: #c6c6c6;
+      line-height: 1.6;
+    }
+
+    /* ==================== FOOTER ==================== */
+    .footer {
+      background: #161616;
+      border-top: 1px solid #393939;
+      padding: 48px;
+      text-align: center;
+      color: #c6c6c6;
+      font-size: 14px;
+    }
+
+    .footer a {
+      color: #0f62fe;
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* ==================== SCROLL ANIMATION ==================== */
+    .scroll-fade {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: all 0.6s ease-out;
+    }
+
+    .scroll-fade.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <!-- TOP NAV -->
+  <nav class="topnav">
+    <div class="topnav-left">
+      <a href="#" class="logo">QtorchX</a>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="https://github.com/notPhani/QTorch/blob/main/README.md" target="_blank">Docs</a></li>
+        <li><a href="https://github.com/notPhani/Glytch-2025-Submission-QtorchX" target="_blank">GitHub</a></li>
+      </ul>
+    </div>
+    <a href="index.html" class="nav-cta">Launch Playground →</a>
+  </nav>
+
+  <!-- HERO SECTION -->
+  <section class="hero">
+    <div class="hero-left">
+      <h1>QtorchX</h1>
+      <p>
+        PyTorch-accelerated quantum circuit simulator with real-time noise modeling, 
+        phi manifold visualization, and GPU parallelization for high-performance quantum algorithm research.
+      </p>
+      <div class="hero-buttons">
+        <a href="index.html" class="btn-primary">
+          Try Playground →
+        </a>
+        <a href="https://github.com/notPhani/Glytch-2025-Submission-QtorchX" class="btn-secondary" target="_blank">
+          View on GitHub
+        </a>
+      </div>
+    </div>
+
+    <div class="hero-right">
+      <div class="code-window">
+        <div class="window-header">
+          <div class="window-dot dot-red"></div>
+          <div class="window-dot dot-yellow"></div>
+          <div class="window-dot dot-green"></div>
+        </div>
+        <div class="code-content" id="codeContent">
+          <div class="code-line" style="animation-delay: 0s"><span class="comment"># Setup quantum circuit</span></div>
+          <div class="code-line" style="animation-delay: 0.1s"><span class="keyword">from</span> qtorchx <span class="keyword">import</span> <span class="class">Circuit</span>, <span class="class">QtorchBackend</span></div>
+          <div class="code-line" style="animation-delay: 0.2s"></div>
+          <div class="code-line" style="animation-delay: 0.3s">circuit = <span class="class">Circuit</span>(num_qubits=<span class="number">4</span>)</div>
+          <div class="code-line" style="animation-delay: 0.4s">circuit.<span class="function">add</span>(<span class="class">Gate</span>(<span class="string">'H'</span>, qubits=[<span class="number">0</span>]))</div>
+          <div class="code-line" style="animation-delay: 0.5s">circuit.<span class="function">add</span>(<span class="class">Gate</span>(<span class="string">'CNOT'</span>, qubits=[<span class="number">0</span>, <span class="number">1</span>]))</div>
+          <div class="code-line" style="animation-delay: 0.6s"></div>
+          <div class="code-line" style="animation-delay: 0.7s"><span class="comment"># Run simulation with noise</span></div>
+          <div class="code-line" style="animation-delay: 0.8s">backend = <span class="class">QtorchBackend</span>(</div>
+          <div class="code-line" style="animation-delay: 0.9s">    circuit=circuit,</div>
+          <div class="code-line" style="animation-delay: 1.0s">    simulate_with_noise=<span class="keyword">True</span>,</div>
+          <div class="code-line" style="animation-delay: 1.1s">    device=<span class="string">'cuda'</span></div>
+          <div class="code-line" style="animation-delay: 1.2s">)</div>
+          <div class="code-line" style="animation-delay: 1.3s"></div>
+          <div class="code-line" style="animation-delay: 1.4s">results = backend.<span class="function">execute_circuit</span>(shots=<span class="number">10000</span>)</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES SECTION -->
+  <section class="features" id="features">
+    <div class="section-header scroll-fade">
+      <div class="section-number">01</div>
+      <h2 class="section-title">Features</h2>
+      <p class="section-subtitle">
+        Built for quantum researchers who need production-grade simulation with realistic noise models
+      </p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card scroll-fade">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#0f62fe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+        </div>
+        <h3 class="feature-title">GPU-Accelerated</h3>
+        <p class="feature-desc">
+          PyTorch backend with CUDA support for 100x faster simulations on NVIDIA GPUs
+        </p>
+      </div>
+
+      <div class="feature-card scroll-fade">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#0f62fe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M12 1v6m0 6v6m5.2-14.8l-4.2 4.2m0 5.2l-4.2 4.2M23 12h-6m-6 0H1m16.8 5.2l-4.2-4.2m-5.2 0l-4.2 4.2"></path>
+          </svg>
+        </div>
+        <h3 class="feature-title">Phi Manifold Noise</h3>
+        <p class="feature-desc">
+          Physics-inspired noise model capturing spatial diffusion, nonlocal coupling, and hardware burst effects
+        </p>
+      </div>
+
+      <div class="feature-card scroll-fade">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#0f62fe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"></line>
+            <line x1="12" y1="20" x2="12" y2="4"></line>
+            <line x1="6" y1="20" x2="6" y2="14"></line>
+          </svg>
+        </div>
+        <h3 class="feature-title">Real-Time Visualization</h3>
+        <p class="feature-desc">
+          Interactive circuit builder with live heatmaps, Bloch spheres, and probability histograms
+        </p>
+      </div>
+
+      <div class="feature-card scroll-fade">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#0f62fe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+          </svg>
+        </div>
+        <h3 class="feature-title">40+ Quantum Gates</h3>
+        <p class="feature-desc">
+          Complete gate library including Pauli, Clifford, rotation, and multi-qubit entangling gates
+        </p>
+      </div>
+
+      <div class="feature-card scroll-fade">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#0f62fe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+        </div>
+        <h3 class="feature-title">Smart Caching</h3>
+        <p class="feature-desc">
+          Two-tier LRU cache with angle quantization for 95%+ hit rates on parametric gates
+        </p>
+      </div>
+
+      <div class="feature-card scroll-fade">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#0f62fe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="9" y1="15" x2="15" y2="15"></line>
+          </svg>
+        </div>
+        <h3 class="feature-title">Research-Ready</h3>
+        <p class="feature-desc">
+          Built for NISQ algorithm research with calibrated hardware noise profiles and export options
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <p>
+      <a href="https://github.com/notPhani/Glytch-2025-Submission-QtorchX" target="_blank">GitHub</a> • 
+      <a href="https://github.com/notPhani/QTorch/blob/main/README.md" target="_blank">Documentation</a>
+    </p>
+  </footer>
+
+  <script>
+    // Scroll animation observer
+    const scrollElements = document.querySelectorAll('.scroll-fade');
+    
+    const elementInView = (el, percentageScroll = 100) => {
+      const elementTop = el.getBoundingClientRect().top;
+      return (
+        elementTop <= 
+        (window.innerHeight || document.documentElement.clientHeight) * (percentageScroll/100)
+      );
+    };
+
+    const displayScrollElement = (element) => {
+      element.classList.add('visible');
+    };
+
+    const handleScrollAnimation = () => {
+      scrollElements.forEach((el) => {
+        if (elementInView(el, 85)) {
+          displayScrollElement(el);
+        }
+      });
+    };
+
+    window.addEventListener('scroll', handleScrollAnimation);
+    handleScrollAnimation(); // Initial check
+
+    // Code animation loop
+    let codeIndex = 0;
+    const codeExamples = [
+      `<div class="code-line"><span class="comment"># Bell State Preparation</span></div>
+<div class="code-line"><span class="keyword">from</span> qtorchx <span class="keyword">import</span> <span class="class">Circuit</span>, <span class="class">Gate</span></div>
+<div class="code-line"></div>
+<div class="code-line">circuit = <span class="class">Circuit</span>(num_qubits=<span class="number">2</span>)</div>
+<div class="code-line">circuit.<span class="function">add</span>(<span class="class">Gate</span>(<span class="string">'H'</span>, qubits=[<span class="number">0</span>]))</div>
+<div class="code-line">circuit.<span class="function">add</span>(<span class="class">Gate</span>(<span class="string">'CNOT'</span>, qubits=[<span class="number">0</span>, <span class="number">1</span>]))</div>
+<div class="code-line"></div>
+<div class="code-line"><span class="comment"># Creates maximally entangled state</span></div>
+<div class="code-line"><span class="comment"># |Φ⁺⟩ = (|00⟩ + |11⟩) / √2</span></div>`,
+
+      `<div class="code-line"><span class="comment"># Quantum Fourier Transform</span></div>
+<div class="code-line"><span class="keyword">def</span> <span class="function">qft</span>(circuit, qubits):</div>
+<div class="code-line">    n = <span class="function">len</span>(qubits)</div>
+<div class="code-line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="function">range</span>(n):</div>
+<div class="code-line">        circuit.<span class="function">add</span>(<span class="class">Gate</span>(<span class="string">'H'</span>, [qubits[i]]))</div>
+<div class="code-line">        <span class="keyword">for</span> j <span class="keyword">in</span> <span class="function">range</span>(i+<span class="number">1</span>, n):</div>
+<div class="code-line">            angle = <span class="number">2</span>*np.pi / <span class="number">2</span>**(j-i+<span class="number">1</span>)</div>
+<div class="code-line">            circuit.<span class="function">add</span>(<span class="class">Gate</span>(<span class="string">'CRZ'</span>, </div>
+<div class="code-line">                [qubits[j], qubits[i]], [angle]))</div>`,
+
+      `<div class="code-line"><span class="comment"># Grover's Algorithm Search</span></div>
+<div class="code-line">circuit = <span class="class">Circuit</span>(num_qubits=<span class="number">4</span>)</div>
+<div class="code-line"></div>
+<div class="code-line"><span class="comment"># Initialize superposition</span></div>
+<div class="code-line"><span class="keyword">for</span> q <span class="keyword">in</span> <span class="function">range</span>(<span class="number">4</span>):</div>
+<div class="code-line">    circuit.<span class="function">add</span>(<span class="class">Gate</span>(<span class="string">'H'</span>, [q]))</div>
+<div class="code-line"></div>
+<div class="code-line"><span class="comment"># Oracle for |1010⟩</span></div>
+<div class="code-line">circuit.<span class="function">add</span>(<span class="class">Gate</span>(<span class="string">'X'</span>, [<span class="number">0</span>]))</div>
+<div class="code-line">circuit.<span class="function">add</span>(<span class="class">Gate</span>(<span class="string">'X'</span>, [<span class="number">2</span>]))</div>`
+    ];
+
+    setInterval(() => {
+      const codeContent = document.getElementById('codeContent');
+      codeContent.style.opacity = '0';
+      
+      setTimeout(() => {
+        codeIndex = (codeIndex + 1) % codeExamples.length;
+        codeContent.innerHTML = codeExamples[codeIndex];
+        codeContent.style.transition = 'opacity 0.5s';
+        codeContent.style.opacity = '1';
+      }, 500);
+    }, 8000);
+  </script>
+</body>
+</html>

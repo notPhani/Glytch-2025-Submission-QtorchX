@@ -14,7 +14,7 @@
   <div id="top-bar">
     <div class="logo">QtorchX Playground</div>
     <div class="top-actions">
-      <button class="top-btn" onclick="window.open('https://github.com/notPhani/Glytch-2025-Submission-QtorchX', '_blank')">Home</button>
+      <button class="top-btn" onclick="window.location.href='playground.html'">Home</button>
       <button class="top-btn" onclick="window.open('https://github.com/notPhani/QTorch/blob/main/README.md', '_blank')">Docs</button>
       <button class="top-btn" onclick="window.open('https://github.com/notPhani/Glytch-2025-Submission-QtorchX', '_blank')">Github</button>
     </div>
@@ -83,21 +83,25 @@
             <span class="panel-title">Circuit</span>
             <span class="panel-subtitle">q[0..3], c[4]</span>
           </div>
-          <div class="panel-header-right">
-            <label class="header-toggle">
-              <input type="checkbox" id="noiseToggle">
-              <span>Noise</span>
-            </label>
-            <label class="header-toggle">
-              <input type="checkbox" id="persistToggle">
-              <span>Persistent</span>
-            </label>
-            <label class="header-toggle">
-              <input type="checkbox" id="inspectToggle">
-              <span>Inspect</span>
-            </label>
-            <button id="runBtn" class="run-btn">Run</button>
-          </div>
+          <!-- NEW CODE (Animated Toggles) -->
+        <div class="panel-header-right">
+          <label class="header-toggle">
+            <input type="checkbox" id="noiseToggle">
+            <span class="toggle-switch"></span>
+            <span>Noise</span>
+          </label>
+          <label class="header-toggle">
+            <input type="checkbox" id="persistToggle">
+            <span class="toggle-switch"></span>
+            <span>Persistent</span>
+          </label>
+          <label class="header-toggle">
+            <input type="checkbox" id="inspectToggle">
+            <span class="toggle-switch"></span>
+            <span>Inspect</span>
+          </label>
+          <button id="runBtn" class="run-btn">Run</button>
+        </div>
         </div>
 
         <div id="circuit-inner">
