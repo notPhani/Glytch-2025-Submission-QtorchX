@@ -1005,7 +1005,7 @@ document.getElementById('runBtn').addEventListener('click', async () => {
   const noise = document.getElementById('noiseToggle').checked;
   const inspect = document.getElementById('inspectToggle').checked;
   const persistent = document.getElementById('persistToggle').checked;
-  const shots = 1024;
+  const shots = 100;
 
   const payloadGates = gateList
     .slice()
@@ -1035,7 +1035,7 @@ document.getElementById('runBtn').addEventListener('click', async () => {
   showLoading();
   
   try {
-    const response = await fetch('https://glytch-2025-submission-qtorchx.onrender.com/simulate', {
+    const response = await fetch('http://127.0.0.1:8000/simulate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)

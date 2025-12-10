@@ -2558,4 +2558,4 @@ async def simulate(req: SimRequest) -> SimResponse:
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("entry:app", host="0.0.0.0", port=8000, reload=True)
